@@ -8,17 +8,19 @@ import (
 
 //     f() return:    Retry()
 //
-// n   ok     err     maxRetries  return (error)                     today
-// --  ----- -----    ----------- --------------                     ------
-// 1   true,   nil    no          nil                                ✓ nil
-// 2   true,  !nil    no          retry?                             ? nil
-// 3   false,  nil    no          retry?                             ? retry
-// 4   false, !nil    no          retry                              ✓ retry
+// n   ok     err     maxRetries  return (error)                     today           original
+// --  ----- -----    ----------- --------------                     ------          --------
+// 1   true,   nil    no          nil                                ✓ nil           nil
+// 2   true,  !nil    no          retry?                             ? nil           err from f()
+// 3   false,  nil    no          retry?                             ? retry         retry
+// 4   false, !nil    no          retry                              ✓ retry         err from f()
 //
-// 5   true,   nil    yes         nil                                ✓ nil
-// 6   true,  !nil    yes         err from f()?                      ? err from f()
-// 7   false,  nil    yes         new err ("Max retries reached")?   x retry          <--- possibly an infinite loop
-// 8   false, !nil    yes         err from f()                       ✓ err from f()
+// 5   true,   nil    yes         nil                                ✓ nil           nil
+// 6   true,  !nil    yes         err from f()?                      ? err from f()  err from f()
+// 7   false,  nil    yes         new err ("Max retries reached")?   x retry (*)     RetryError
+// 8   false, !nil    yes         err from f()                       ✓ err from f()  err from f()
+//
+// (*) possibly an infinite loop
 //
 //
 // So, what's ok and err, and how should they be treated?  If they go together
@@ -42,6 +44,14 @@ import (
 // connection error, return false; if it connected, but did not have the
 // expected response, then keep trying.  The caller then would be able to
 // differentiate them by the returned error.
+//
+// The way the function was originally written reads as this:
+//
+// - If function produces an error, fail immediatelly with that error
+// - Else, if ok is true, return nil and succeed
+// - Otherwise, retry
+//
+// So, it is not retry on error, it is retry until ok, and stop on error
 //
 // Documentation update proposals:
 // - what, exactly, is ok, and how it interacts with err
