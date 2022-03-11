@@ -42,12 +42,20 @@ import (
 // connection error, return false; if it connected, but did not have the
 // expected response, then keep trying.  The caller then would be able to
 // differentiate them by the returned error.
+//
+// Documentation update proposals:
+// - what, exactly, is ok, and how it interacts with err
+// - make it clear that maxRetries = 1 means that the function will run at most
+//   twice (the original run + one retry at maximum)
 
 type RetryTestItem struct {
-	ok               bool
-	err              error
-	maxRetries       int
-	expectedRetries  int
+	// These two configure what the f() function will respond
+	ok  bool
+	err error
+	// This configures Retry itself
+	maxRetries int
+	// And those are what we're expecting the actual result to look like
+	expectedRetries  int // rename this to expectedTries?  That would be first try + retries
 	expectedResponse error
 
 	// perhaps change this to okOn and nilOn
@@ -113,16 +121,16 @@ func TestRetry(t *testing.T) {
 	for _, item := range testTable {
 		name := fmt.Sprintf("ok:%v err:%v retries:%v maxRetries:%v succeedOn:%v", item.ok, item.err, item.expectedRetries, item.maxRetries, item.succeedOn)
 
-		var currentRetry int
+		var currentTry int
 		t.Run(name, func(t *testing.T) {
 
 			retryErr := Retry(time.Second, item.maxRetries, func() (bool, error) {
-				currentRetry++
-				if currentRetry > item.maxRetries {
+				currentTry++
+				if currentTry > item.maxRetries+1 {
 					// This is a protection for infinite loops
-					return false, fmt.Errorf("Retry %v > maxRetries %v", currentRetry, item.maxRetries)
+					return false, fmt.Errorf("Retry %v > maxRetries %v", currentTry, item.maxRetries)
 				}
-				if currentRetry == item.succeedOn {
+				if currentTry == item.succeedOn {
 					return true, nil
 				}
 				return item.ok, item.err
@@ -142,8 +150,8 @@ func TestRetry(t *testing.T) {
 				}
 			}
 
-			if currentRetry != item.expectedRetries {
-				t.Errorf("%v != %v", currentRetry, item.expectedRetries)
+			if currentTry != item.expectedRetries {
+				t.Errorf("%v != %v", currentTry, item.expectedRetries)
 			}
 
 		})
