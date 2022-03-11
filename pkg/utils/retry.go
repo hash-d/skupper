@@ -23,9 +23,16 @@ import (
 type ConditionFunc func() (bool, error)
 
 // Retry retries f every interval until after maxRetries.
+//
 // The interval won't be affected by how long f takes.
 // For example, if interval is 3s, f takes 1s, another f will be called 2s later.
 // However, if f takes longer than interval, it will be delayed.
+//
+// If an error is received from f, fail immediatelly and return that error (no
+// further retries).
+//
+// Keep in mind that the second argument is for max _retries_.  So, with a value
+// of 1, f() will run at most 2 times (one try and one _retry_).
 func Retry(interval time.Duration, maxRetries int, f ConditionFunc) error {
 	if maxRetries <= 0 {
 		return fmt.Errorf("maxRetries (%d) should be > 0", maxRetries)
@@ -35,11 +42,14 @@ func Retry(interval time.Duration, maxRetries int, f ConditionFunc) error {
 
 	for i := 0; ; i++ {
 		ok, err := f()
-		if err != nil && i == maxRetries {
+		if err != nil {
 			return err
 		}
 		if ok {
 			return nil
+		}
+		if i == maxRetries {
+			return fmt.Errorf("still failing after %d retries", i)
 		}
 		<-tick.C
 	}

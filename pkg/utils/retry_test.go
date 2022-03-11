@@ -8,160 +8,173 @@ import (
 
 //     f() return:    Retry()
 //
-// n   ok     err     maxRetries  return (error)                     today           original
-// --  ----- -----    ----------- --------------                     ------          --------
-// 1   true,   nil    no          nil                                ✓ nil           nil
-// 2   true,  !nil    no          retry?                             ? nil           err from f()
-// 3   false,  nil    no          retry?                             ? retry         retry
-// 4   false, !nil    no          retry                              ✓ retry         err from f()
+// n   ok     err     maxRetries  return (error)
+// --  ----- -----    ----------- --------------
+// 1   true,   nil    no          nil
+// 2   true,  !nil    no          err from f()
+// 3   false,  nil    no          retry
+// 4   false, !nil    no          err from f()
 //
-// 5   true,   nil    yes         nil                                ✓ nil           nil
-// 6   true,  !nil    yes         err from f()?                      ? err from f()  err from f()
-// 7   false,  nil    yes         new err ("Max retries reached")?   x retry (*)     RetryError
-// 8   false, !nil    yes         err from f()                       ✓ err from f()  err from f()
+// 5   true,   nil    yes         nil
+// 6   true,  !nil    yes         err from f()
+// 7   false,  nil    yes         RetryError
+// 8   false, !nil    yes         err from f()
 //
-// (*) possibly an infinite loop
-//
-//
-// So, what's ok and err, and how should they be treated?  If they go together
-// (ok == (err != nil)), everything works fine, but if they differ, things get
-// weird
-//
-// Ok may mean two things:
-//
-// 1 - keep trying.  In that case, we'd be returning 'err' from f() only to
-//     pass it along.
-//
-// 2 - stop and fail.  If that was so, we should remove the check by err and
-//     replace it by a check with ok
-//
-// In either case, we may end up on the weird situation where we return before
-// maxRetries with err == ""
-//
-// To me, it makes more sense if ok means 'keep trying if error, return nil if
-// no error (and till maxRetries).  That way, 'ok' could be used to
-// differentiate between fatal and non-fatal errors (for example, if a
-// connection error, return false; if it connected, but did not have the
-// expected response, then keep trying.  The caller then would be able to
-// differentiate them by the returned error.
-//
-// The way the function was originally written reads as this:
+// Or:
 //
 // - If function produces an error, fail immediatelly with that error
 // - Else, if ok is true, return nil and succeed
-// - Otherwise, retry
-//
-// So, it is not retry on error, it is retry until ok, and stop on error
-//
-// Documentation update proposals:
-// - what, exactly, is ok, and how it interacts with err
-// - make it clear that maxRetries = 1 means that the function will run at most
-//   twice (the original run + one retry at maximum)
+// - Otherwise:
+//   - if before maximum retry: retry
+//   - if on maximum retry: return a Retry error and fail
 
 type RetryTestItem struct {
-	// These two configure what the f() function will respond
-	ok  bool
-	err error
+	// These configure what the f() function will respond
+	err        error
+	okOnTry    int // OkOnTry = 1 make it ok right away; OkOnTry = 0 will never be ok
+	errorOnTry int
+	nilOnTry   int
 	// This configures Retry itself
 	maxRetries int
 	// And those are what we're expecting the actual result to look like
-	expectedRetries  int // rename this to expectedTries?  That would be first try + retries
+	expectedTries    int
 	expectedResponse error
 
-	// perhaps change this to okOn and nilOn
-	succeedOn int
+	// these change the normal response of f() until a specific try
 }
 
 func TestRetry(t *testing.T) {
 
 	testTable := []RetryTestItem{
 		{ // #1
-			ok:               true,
+			okOnTry:          1,
 			err:              nil,
 			maxRetries:       3,
-			expectedRetries:  1,
+			expectedTries:    1,
 			expectedResponse: nil,
+		}, { // #2
+			okOnTry:          1,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    1,
+			expectedResponse: fmt.Errorf("app error"),
+		}, { // #3, #7
+			okOnTry:          0,
+			err:              nil,
+			maxRetries:       3,
+			expectedTries:    4,
+			expectedResponse: fmt.Errorf("still failing after 3 retries"),
+		}, { // #4
+			okOnTry:          0,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    1,
+			expectedResponse: fmt.Errorf("app error"),
+		}, { // #3, #1
+			okOnTry:          2,
+			err:              nil,
+			maxRetries:       3,
+			expectedTries:    2,
+			expectedResponse: nil,
+		}, { // #3, #2
+			okOnTry:          2,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    2,
+			expectedResponse: fmt.Errorf("app error"),
+			errorOnTry:       2,
+		}, { // #3, #4
+			okOnTry:          0,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    2,
+			expectedResponse: fmt.Errorf("app error"),
+			errorOnTry:       2,
+		}, { // #3, #5
+			okOnTry:          4,
+			err:              nil,
+			maxRetries:       3,
+			expectedTries:    4,
+			expectedResponse: nil,
+		}, { // #3, #6
+			okOnTry:          4,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    4,
+			expectedResponse: fmt.Errorf("app error"),
+			errorOnTry:       4,
+		}, { // #3, #8
+			okOnTry:          0,
+			err:              fmt.Errorf("app error"),
+			maxRetries:       3,
+			expectedTries:    4,
+			expectedResponse: fmt.Errorf("app error"),
+			errorOnTry:       4,
 		}, {
-			ok:               true,
+			okOnTry:          1,
 			err:              nil,
 			maxRetries:       -1,
-			expectedRetries:  0,
+			expectedTries:    0,
 			expectedResponse: fmt.Errorf("maxRetries (%d) should be > 0", -1),
 		}, {
-			ok:               true,
+			okOnTry:          1,
 			err:              nil,
 			maxRetries:       0,
-			expectedRetries:  0,
+			expectedTries:    0,
 			expectedResponse: fmt.Errorf("maxRetries (%d) should be > 0", 0),
-		}, { // #4, #8
-			ok:               false,
-			err:              fmt.Errorf("app error"),
-			maxRetries:       3,
-			expectedRetries:  3,
-			expectedResponse: fmt.Errorf("app error"),
-		}, { // #2, ~#6~
-			ok:               true,
-			err:              fmt.Errorf("app error"),
-			maxRetries:       3,
-			expectedRetries:  3,
-			expectedResponse: fmt.Errorf("app error"),
-		}, { // #1, #5
-			ok:               false,
-			err:              nil,
-			maxRetries:       3,
-			expectedRetries:  2,
-			expectedResponse: nil,
-			succeedOn:        2,
-		}, { // #1, #5; extreme
-			ok:               false,
-			err:              nil,
-			maxRetries:       3,
-			expectedRetries:  3,
-			expectedResponse: nil,
-			succeedOn:        3,
-		}, { // #3, #7
-			ok:               false,
-			err:              nil,
-			maxRetries:       3,
-			expectedRetries:  3,
-			expectedResponse: nil, // this will loop forever
 		},
 	}
 
 	for _, item := range testTable {
-		name := fmt.Sprintf("ok:%v err:%v retries:%v maxRetries:%v succeedOn:%v", item.ok, item.err, item.expectedRetries, item.maxRetries, item.succeedOn)
+		name := fmt.Sprintf("okOnTry:%v err:%v expectedTries:%v maxRetries:%v errorOnTry:%v nilOnTry: %v",
+			item.okOnTry, item.err, item.expectedTries, item.maxRetries, item.errorOnTry, item.nilOnTry)
 
 		var currentTry int
 		t.Run(name, func(t *testing.T) {
 
-			retryErr := Retry(time.Second, item.maxRetries, func() (bool, error) {
+			retryErr := Retry(time.Second, item.maxRetries, func() (ok bool, err error) {
 				currentTry++
 				if currentTry > item.maxRetries+1 {
 					// This is a protection for infinite loops
 					t.Fatalf("Retry %v > maxRetries %v + 1", currentTry, item.maxRetries)
 				}
-				if currentTry == item.succeedOn {
-					return true, nil
+
+				ok = item.okOnTry > 0 && currentTry >= item.okOnTry
+
+				if item.errorOnTry > 0 {
+					if currentTry >= item.errorOnTry {
+						err = item.err
+					} else {
+						err = nil
+					}
+				} else {
+					err = item.err
 				}
-				return item.ok, item.err
+
+				if item.nilOnTry > 0 && currentTry >= item.nilOnTry {
+					err = nil
+				}
+
+				return
+
 			})
 
 			if item.expectedResponse != nil {
 				if retryErr != nil {
 					if retryErr.Error() != item.expectedResponse.Error() {
-						t.Error(retryErr)
+						t.Error("Received error:", retryErr)
 					}
 				} else {
-					t.Error(retryErr)
+					t.Error("Received error:", retryErr)
 				}
 			} else {
 				if retryErr != nil {
-					t.Error(retryErr)
+					t.Error("Received error:", retryErr)
 				}
 			}
 
-			if currentTry != item.expectedRetries {
-				t.Errorf("%v != %v", currentTry, item.expectedRetries)
+			if currentTry != item.expectedTries {
+				t.Errorf("%v != %v", currentTry, item.expectedTries)
 			}
 
 		})
