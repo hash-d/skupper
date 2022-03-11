@@ -181,3 +181,62 @@ func TestRetry(t *testing.T) {
 	}
 
 }
+
+type TestRetryErrorItem struct {
+	workOnTry     int
+	expectedTries int
+	maxRetries    int
+	expectSuccess bool
+}
+
+func TestRetryError(t *testing.T) {
+	testTable := []TestRetryErrorItem{
+		{
+			workOnTry:     1,
+			expectedTries: 1,
+			maxRetries:    3,
+			expectSuccess: true,
+		}, {
+			workOnTry:     2,
+			expectedTries: 2,
+			maxRetries:    3,
+			expectSuccess: true,
+		}, {
+			workOnTry:     4,
+			expectedTries: 4,
+			maxRetries:    3,
+			expectSuccess: true,
+		}, {
+			workOnTry:     5,
+			expectedTries: 4,
+			maxRetries:    3,
+			expectSuccess: false,
+		},
+	}
+
+	for _, item := range testTable {
+		name := fmt.Sprintf("workOnTry: %v expectedTries: %v maxRetries: %v expectSuccess: %v",
+			item.workOnTry, item.expectedTries, item.maxRetries, item.expectSuccess)
+		t.Run(name, func(t *testing.T) {
+			var currentTry int
+
+			resp := RetryError(time.Second, item.maxRetries, func() (err error) {
+				currentTry++
+				if currentTry >= item.workOnTry {
+					return nil
+				}
+				return fmt.Errorf("Still not working")
+			})
+
+			if item.expectSuccess != (resp == nil) {
+				t.Errorf("Received error: %v", resp)
+			}
+
+			if item.expectedTries != currentTry {
+				t.Errorf("Returned in %d tries", currentTry)
+			}
+
+		})
+	}
+
+}

@@ -22,6 +22,8 @@ import (
 
 type ConditionFunc func() (bool, error)
 
+type CheckedFunc func() error
+
 // Retry retries f every interval until after maxRetries.
 //
 // The interval won't be affected by how long f takes.
@@ -50,6 +52,27 @@ func Retry(interval time.Duration, maxRetries int, f ConditionFunc) error {
 		}
 		if i == maxRetries {
 			return fmt.Errorf("still failing after %d retries", i)
+		}
+		<-tick.C
+	}
+}
+
+// This is similar to Retry(), but it will not fail immediatelly on errors, and
+// if the retries are exausted and f() still failing, it will return f()'s error
+func RetryError(interval time.Duration, maxRetries int, f CheckedFunc) error {
+	if maxRetries <= 0 {
+		return fmt.Errorf("maxRetries (%d) should be > 0", maxRetries)
+	}
+	tick := time.NewTicker(interval)
+	defer tick.Stop()
+
+	for i := 0; ; i++ {
+		err := f()
+		if err == nil {
+			return nil
+		}
+		if i == maxRetries {
+			return err
 		}
 		<-tick.C
 	}
