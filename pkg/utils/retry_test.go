@@ -128,7 +128,7 @@ func TestRetry(t *testing.T) {
 				currentTry++
 				if currentTry > item.maxRetries+1 {
 					// This is a protection for infinite loops
-					return false, fmt.Errorf("Retry %v > maxRetries %v", currentTry, item.maxRetries)
+					t.Fatalf("Retry %v > maxRetries %v + 1", currentTry, item.maxRetries)
 				}
 				if currentTry == item.succeedOn {
 					return true, nil
