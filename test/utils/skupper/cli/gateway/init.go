@@ -15,6 +15,7 @@ import (
 // InitTester runs `skupper gateway init` and asserts that
 // the gateway is defined accordingly
 type InitTester struct {
+	// Note --name is deprecated and ignored.
 	Name          string
 	ExportOnly    bool
 	GeneratedName *string

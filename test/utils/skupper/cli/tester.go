@@ -66,6 +66,9 @@ func RunScenarios(t *testing.T, scenarios []TestScenario) {
 	var stdout, stderr string
 	var err error
 
+	// Do not report errors as happening on this function
+	t.Helper()
+
 	// Running the scenarios
 	for _, scenario := range scenarios {
 		passed := t.Run(scenario.Name, func(t *testing.T) {
@@ -76,6 +79,7 @@ func RunScenarios(t *testing.T, scenarios []TestScenario) {
 			log.Printf("%s has failed, exiting", scenario.Name)
 			log.Printf("STDOUT:\n%s", stdout)
 			log.Printf("STDERR:\n%s", stderr)
+			log.Printf("Error: \n%s", err)
 			break
 		}
 	}
