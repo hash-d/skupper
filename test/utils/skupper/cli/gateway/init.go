@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/skupperproject/skupper/api/types"
@@ -53,6 +54,11 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 		return
 	}
 
+	log.Print("Existing gateways")
+	for _, gw := range existingGateways {
+		log.Print(" - ", gw.GatewayName)
+	}
+
 	// Execute the gateway init command
 	stdout, stderr, err = cli.RunSkupperCli(i.Command(cluster))
 	if err != nil {
@@ -79,6 +85,11 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 	})
 	if err != nil {
 		return
+	}
+
+	log.Print("Current gateways")
+	for _, gw := range currentGateways {
+		log.Print(" - ", gw.GatewayName)
 	}
 
 	// If i.Name is empty we need to discover the generated gateway name
