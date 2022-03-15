@@ -10,6 +10,7 @@ import (
 	"github.com/skupperproject/skupper/pkg/utils"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/skupper/cli"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -134,8 +135,22 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 	//
 	// Retrieve ConfigMap with skupper.io/type: gateway-definition (label)
 	//
-	cm, err := cluster.VanClient.KubeClient.CoreV1().ConfigMaps(cluster.Namespace).Get("skupper-gateway-"+gatewayName, v1.GetOptions{})
+	//	cm, err := cluster.VanClient.KubeClient.CoreV1().ConfigMaps(cluster.Namespace).Get("skupper-gateway-"+gatewayName, v1.GetOptions{})
+
+	configmaps, err := cluster.VanClient.KubeClient.CoreV1().ConfigMaps(cluster.Namespace).List(v1.ListOptions{LabelSelector: "skupper.io/type=gateway-definition"})
 	if err != nil {
+		return
+	}
+	var cm corev1.ConfigMap
+	for _, configmap := range configmaps.Items {
+		gatewayNameFromCM, ok := configmap.ObjectMeta.Annotations["skupper.io/gateway-name"]
+		log.Printf("Testing gateway %v", gatewayNameFromCM)
+		if ok && gatewayName == gatewayNameFromCM {
+			cm = configmap
+		}
+	}
+	if &cm == nil {
+		err = fmt.Errorf("ConfigMap for gateway %v not found", gatewayName)
 		return
 	}
 
