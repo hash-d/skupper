@@ -69,7 +69,7 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 	// Retrieve updated list of gateways
 	//
 	var currentGateways []*types.GatewayInspectResponse
-	err = utils.Retry(time.Second, 25, func() (bool, error) {
+	err = utils.Retry(3*time.Second, 30, func() (bool, error) {
 		currentGateways, err = cluster.VanClient.GatewayList(ctx)
 		if err != nil {
 			return false, err
