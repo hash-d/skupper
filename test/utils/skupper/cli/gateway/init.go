@@ -69,10 +69,14 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 	// Retrieve updated list of gateways
 	//
 	var currentGateways []*types.GatewayInspectResponse
-	err = utils.Retry(time.Second, 5, func() (bool, error) {
+	err = utils.Retry(time.Second, 25, func() (bool, error) {
 		currentGateways, err = cluster.VanClient.GatewayList(ctx)
 		if err != nil {
 			return false, err
+		}
+		log.Print("Current gateways")
+		for _, gw := range currentGateways {
+			log.Print(" - ", gw.GatewayName)
 		}
 		if len(currentGateways) > len(existingGateways) {
 			for _, gw := range currentGateways {
@@ -85,11 +89,6 @@ func (i *InitTester) Run(cluster *base.ClusterContext) (stdout string, stderr st
 	})
 	if err != nil {
 		return
-	}
-
-	log.Print("Current gateways")
-	for _, gw := range currentGateways {
-		log.Print(" - ", gw.GatewayName)
 	}
 
 	// If i.Name is empty we need to discover the generated gateway name
