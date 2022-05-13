@@ -198,7 +198,7 @@ func removeCrd(t *testing.T, cluster *base.ClusterContext) (changed bool, err er
 	}
 
 	if _, err := cluster.KubectlExec("delete crd skupperclusterpolicies.skupper.io"); err != nil {
-		t.Fatalf("Removal of CRD failed: %v", err)
+		t.Logf("WARNING: Removal of CRD failed: %v", err)
 	}
 	return
 }
@@ -482,6 +482,9 @@ func TestPolicies(t *testing.T) {
 						removeCrd(t, context)
 						removeClusterRole(t, context)
 					}()
+					if !base.MultipleClusters() {
+						break
+					}
 				}
 			}
 			if base.ShouldSkipNamespaceTeardown() {

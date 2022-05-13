@@ -323,7 +323,7 @@ func testHostnamesPolicy(t *testing.T, pub, prv *base.ClusterContext) {
 		init,
 		createTestTable,
 		linkForStatus,
-		//statusTestTable,
+		// statusTestTable,
 		cleanup,
 	} {
 		testTable = append(testTable, t...)

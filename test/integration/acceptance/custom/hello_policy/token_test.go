@@ -4,6 +4,8 @@
 package hello_policy
 
 import (
+	"os"
+
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/skupper/cli"
 	"github.com/skupperproject/skupper/test/utils/skupper/cli/token"
@@ -16,6 +18,7 @@ import (
 // And check whether it works or is disallowed by policy
 func createTokenPolicyScenario(cluster *base.ClusterContext, prefix, testPath, name string, works bool) (createToken cli.TestScenario) {
 
+	_ = os.MkdirAll(testPath, 0755)
 	createToken = cli.TestScenario{
 		Name: prefixName(prefix, "create-token"),
 		Tasks: []cli.SkupperTask{
