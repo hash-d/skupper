@@ -120,6 +120,13 @@ func (c *ClusterTestRunnerBase) GetPublicContextPromise(id int) *ClusterContextP
 	return c.GetContextPromise(false, id)
 }
 
+func (c *ClusterTestRunnerBase) GetDummyContextPromise() *ClusterContextPromise {
+	return &ClusterContextPromise{
+		cluster: c,
+		dummy:   true,
+	}
+}
+
 func (c *ClusterTestRunnerBase) GetContextPromise(private bool, id int) *ClusterContextPromise {
 	return &ClusterContextPromise{
 		cluster: c,

@@ -22,7 +22,7 @@ func (s SegmentSetup) Run() error {
 
 	runner := s.Namespace.Runner()
 
-	s.Logf("Segment setup: %v", s)
+	s.Logf("Segment setup: %+v", s)
 	needs := base.ClusterNeeds{
 		NamespaceId:     "hello-world",
 		PublicClusters:  1,

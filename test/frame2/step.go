@@ -13,7 +13,6 @@ const EnvFrame2Verbose = "SKUPPER_TEST_FRAME2_VERBOSE"
 type Step struct {
 	Doc       string
 	Namespace *base.ClusterContextPromise
-	Fn        CheckedRetryFunction
 	Level     int
 	// Whether the step should always print logs
 	// Even if false, logs will be done if SKUPPER_TEST_FRAME2_VERBOSE
@@ -38,14 +37,21 @@ func (s Step) IsVerbose() bool {
 
 type Validate struct {
 	Step
+	Validator
 	// Every Validator runs inside a Retry.  If no options are given,
 	// the default RetryOptions are used (ie, single run of Fn, with either
 	// failed check or error causing the step to fail)
 	RetryOptions
 }
 
+func (v Validate) GetRetryOptions() RetryOptions {
+	return v.RetryOptions
+}
+
 type Validator interface {
 	Stepper
+	Validate() error
+	GetRetryOptions() RetryOptions
 }
 
 type Execute struct {

@@ -246,6 +246,7 @@ type ClusterContextPromise struct {
 	private        bool
 	id             int
 	clusterContext *ClusterContext
+	dummy          bool // A dummy has only the reference to the clusterTestRunnerBase
 }
 
 // Satisfy the promise.  The returned error comes from the call to
@@ -253,6 +254,9 @@ type ClusterContextPromise struct {
 // A successful run caches the ClusterContext for future calls
 // (which will then never fail)
 func (c *ClusterContextPromise) Satisfy() (*ClusterContext, error) {
+	if c.dummy {
+		return nil, fmt.Errorf("This is a dummy ClusterContextPromise")
+	}
 	var err error
 	if c.clusterContext == nil {
 		c.clusterContext, err = c.cluster.GetContext(c.private, c.id)

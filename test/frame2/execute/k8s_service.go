@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Creates a Kubernetes service, with simplified configurations
 type K8SServiceCreate struct {
 	frame2.Execute
 	Name        string
