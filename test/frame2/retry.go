@@ -2,12 +2,7 @@ package frame2
 
 import (
 	"fmt"
-	"log"
 	"time"
-)
-
-var (
-	lastSuccessErrorStr = "cannot ensure requested number of successes.  last error: %w"
 )
 
 type RetryFunction func() (err error)
@@ -56,6 +51,7 @@ func (r Retry) Run() ([]error, error) {
 	if interval == 0 {
 		interval = time.Second
 	}
+
 	tick := time.NewTicker(interval)
 	defer tick.Stop()
 
@@ -65,74 +61,42 @@ func (r Retry) Run() ([]error, error) {
 	var consecutiveSuccess int
 	var ignoredSuccess int
 	var retries int
+
+	// We have to have at least one success
 	var ensure = r.Options.Ensure
 	if ensure == 0 {
 		ensure = 1
 	}
-	//var anySuccess bool
-
-	//	var lastError error
-
 	for {
 		totalTries++
 		err := r.Fn()
 		results = append(results, err)
 		if err == nil {
-			//anySuccess = true
 			// Are we counting this as a success?
 			if ignoredSuccess >= r.Options.Ignore || totalTries > r.Options.Ignore {
 				consecutiveSuccess++
 			} else {
 				ignoredSuccess++
 			}
-			// At least one success that counts + whatever Ensure wants, and we're good
+			// Are we good?
 			if consecutiveSuccess >= ensure {
 				return results, nil
 			}
+			// It's a success, but not enough; we'll try again
 			continue
-			// It's a success, but not enough; can we still make it?
-			//			if totalTries-ignoredTries > r.Options.Allow+r.Options.Retries {
-			//				err = fmt.Errorf(lastSuccessErrorStr, lastError)
-			//				return results, err
-			//			} else {
-			//				continue
-			//			}
 		}
 		// This try failed, and we ran out of retries.  Note retries only count after Allow expires
 		if totalTries > r.Options.Allow && retries >= r.Options.Retries {
 			return results, fmt.Errorf("max retry attempts reached: %w", err)
 		}
-		remainingRetries := r.Options.Retries - retries // at this point
-		if remainingRetries < 0 {
-			remainingRetries = 0
-		}
-		//		if totalTries > r.Options.Allow && ensure > totalTries-r.Options.Allow-remainingRetries {
-		if totalTries > r.Options.Allow && false { //&& remainingRetries < 0 {
-			// All hope is lost, we cannot comply with Ensure anymore, even considering
-			// allow and retries
-			log.Printf("remaining: %d", remainingRetries)
-			log.Printf("total:     %d", totalTries)
-			log.Printf("ensure:    %d", ensure)
-			return results, fmt.Errorf(lastSuccessErrorStr, err)
-		}
-		//		lastError = err
 		consecutiveSuccess = 0
 		ignoredSuccess = 0
-		// Any errors past the initial allow number + retries are fatal, but we
-		// do not consider any ignored tries
-		//		if totalTries > r.Options.Allow+r.Options.Retries {
-		//			return results, fmt.Errorf("ASDF: %w", err)
-		//		}
 		// If I got down here and it's past Allow time, the next run will be a retry
 		if totalTries > r.Options.Allow {
 			retries++
 		}
-		//		if totalTries > r.Options.Ignore+r.Options.Allow+r.Options.Ensure+r.Options.Retries {
-		//			return results, err
-		//		}
 		<-tick.C
 	}
-	//return failures, nil
 }
 
 // Runs the retry in parallel; returns a function

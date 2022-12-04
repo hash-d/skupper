@@ -214,10 +214,10 @@ func TestRetry(t *testing.T) {
 			},
 			checks: []testChecks{
 				{
-					input:  []error{funcError, funcError, funcError, nil, nil},
+					input:  []error{funcError, funcError, funcError, funcError, nil, nil},
 					result: nil,
 				}, {
-					input:  []error{nil, funcError, funcError, nil, funcError, nil, nil},
+					input:  []error{nil, funcError, nil, funcError, nil, funcError, nil, nil},
 					result: nil,
 				}, {
 					input:  []error{funcError, funcError, nil, nil},
@@ -231,6 +231,107 @@ func TestRetry(t *testing.T) {
 				}, {
 					input:  []error{nil, funcError, nil, nil},
 					result: nil,
+				},
+			},
+		}, {
+			config: RetryOptions{
+				Ignore:   2,
+				Allow:    2,
+				Interval: time.Millisecond,
+			},
+			checks: []testChecks{
+				{
+					input:  []error{nil, nil, funcError},
+					result: funcError,
+				}, {
+					input:  []error{funcError, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{nil, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, nil, nil},
+					result: nil,
+				},
+			},
+		}, {
+			config: RetryOptions{
+				Ignore:   2,
+				Retries:  2,
+				Interval: time.Millisecond,
+			},
+			checks: []testChecks{
+				{
+					input:  []error{funcError, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{nil, nil, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{nil, nil, funcError, funcError, funcError},
+					result: funcError,
+				}, {
+					input:  []error{nil, nil, funcError, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{nil, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError},
+					result: funcError,
+				},
+			},
+		}, {
+			config: RetryOptions{
+				Allow:    2,
+				Retries:  2,
+				Interval: time.Millisecond,
+			},
+			checks: []testChecks{
+				{
+					input:  []error{funcError, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, funcError, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, funcError, funcError},
+					result: funcError,
+				},
+			},
+		}, {
+			config: RetryOptions{
+				Ignore:   2,
+				Ensure:   2,
+				Allow:    2,
+				Retries:  2,
+				Interval: time.Millisecond,
+			},
+			checks: []testChecks{
+				{
+					input:  []error{funcError, funcError, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{nil, nil, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, nil, funcError, funcError, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, nil, funcError, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, funcError, nil, nil},
+					result: nil,
+				}, {
+					input:  []error{funcError, funcError, funcError, funcError, funcError},
+					result: funcError,
 				},
 			},
 		},
