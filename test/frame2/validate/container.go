@@ -2,7 +2,6 @@ package validate
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/pkg/kube"
@@ -28,9 +27,12 @@ type Container struct {
 }
 
 func (c Container) Run() error {
-	log.Printf("XXXX validating %v", c)
+	c.Logf("Validating %+v", c)
 
-	cluster := c.Namespace
+	cluster, err := c.Namespace.Satisfy()
+	if err != nil {
+		return err
+	}
 
 	// retrieving the router pods
 	pods, err := kube.GetPods(c.PodSelector, cluster.Namespace, cluster.VanClient.KubeClient)
@@ -38,7 +40,7 @@ func (c Container) Run() error {
 		return err
 	}
 
-	log.Printf("- Found %d pod(s)", len(pods))
+	c.Logf("- Found %d pod(s)", len(pods))
 
 	if c.ExpectNone {
 		if len(pods) > 0 {
@@ -64,11 +66,11 @@ func (c Container) Run() error {
 		for _, container := range pod.Spec.Containers {
 			if container.Name == c.ContainerName || c.ContainerName == "" {
 				containerFound = true
-				log.Printf("- Checking container %v", container.Name)
+				c.Logf("- Checking container %v", container.Name)
 
 				cpuRequest := container.Resources.Requests.Cpu().String()
 				if c.CheckUnrequested || c.CPURequest != "" {
-					log.Printf("- Validating CPURequest")
+					c.Logf("- Validating CPURequest")
 					if cpuRequest != c.CPURequest {
 						return fmt.Errorf(
 							"CPURequest %q different than expected %q",
@@ -80,7 +82,7 @@ func (c Container) Run() error {
 
 				cpuLimit := container.Resources.Limits.Cpu().String()
 				if c.CheckUnrequested || c.CPULimit != "" {
-					log.Printf("- Validating CPULimit")
+					c.Logf("- Validating CPULimit")
 					if cpuLimit != c.CPULimit {
 						return fmt.Errorf(
 							"CPULimit %q different than expected %q",
@@ -92,7 +94,7 @@ func (c Container) Run() error {
 
 				memoryRequest := container.Resources.Requests.Memory().String()
 				if c.CheckUnrequested || c.MemoryRequest != "" {
-					log.Printf("- Validating MemoryRequest")
+					c.Logf("- Validating MemoryRequest")
 					if memoryRequest != c.MemoryRequest {
 						return fmt.Errorf(
 							"MemoryRequest %q different than expected %q",
@@ -104,7 +106,7 @@ func (c Container) Run() error {
 
 				memoryLimit := container.Resources.Limits.Memory().String()
 				if c.CheckUnrequested || c.MemoryLimit != "" {
-					log.Printf("- Validating MemoryLimit")
+					c.Logf("- Validating MemoryLimit")
 					if memoryLimit != c.MemoryLimit {
 						return fmt.Errorf(
 							"MemoryLimit %q different than expected %q",

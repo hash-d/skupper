@@ -226,6 +226,19 @@ func (cc *ClusterContext) DumpTestInfo(dirName string) {
 	}
 }
 
+// Returns a satisfied ClusterContextPromise, pointing to the ClusterContext where
+// it was called.
+// The Promise will be defective in that it will not have a reference to the
+// ClusterTestRunnerBase (field cluster), so Runner() will always return nil.
+func (cc *ClusterContext) GetPromise() *ClusterContextPromise {
+	return &ClusterContextPromise{
+		cluster:        nil,
+		private:        cc.Private,
+		id:             cc.Id,
+		clusterContext: cc,
+	}
+}
+
 // Some configuration may require a reference to a ClusterContext before it is
 // created.  In that case, they can ask for a ClusterContextPromise, instead.
 type ClusterContextPromise struct {
