@@ -12,36 +12,34 @@ type Retry struct {
 	Options RetryOptions
 }
 
-// The maximum number of retries will be:
-// max (allow, ignore) + Ensure + Retries
-// but it will often be less.  the minimum:
-// 0 (for allow/ignore that were immediatelly matched) + Ensure (where no retry past Ensure was required)
+// Allow accounts for instabilities (for example, a service load balanced on
+// two providers might return a mix of successes and failures while the two
+// providers stabilize).  The last success streak in this phase will count to
+// Ensure.
 //
-// Allow accounts for instabilities (for example, a service with two providers might return a mix of
-// success and failures while the two providers stabilize).  The last successful results (if not ignored)
-// will count to Ensure.
+// Once past the Allow phase, any errors will cause a failure, unless there
+// are Retries available
 //
-// Once past the Allow phase, any errors reset the success count.  Retry will kick in if configured, and
-// if the remaining tries fit into the Ensure target.
+// Even successes may require additional runs.  There are two cases here:
 //
-// The ignore counts from the first success in the last success streak from the Allow phase, or from
-// the start of the retry phase, if no allow configured or no success in that phase
+// - If Ensure is set, the test will keep trying on success until the required
+//   number of successes are met
+// - If Ignore was set, that number of successes will be ignored on the count
+//   to Ensure, possibly requiring additional runs until the Ensure target is met
+//
+// These, however, do not count as Retries.  i. e, Retries are only those
+// additional runs that were caused by a failure.
+//
+// The ignore counts from the first success in the last success streak from the
+// Allow phase, or from the start of the retry phase (if no Allow configured or
+// no success in that phase)
 //
 type RetryOptions struct {
 	Allow    int           // for initial failures
 	Ignore   int           // initial successes
-	Ensure   int           // last n tries are successful
-	Retries  int           // after initial allow/ignore; can be zero.  How does it play with Ensure?  Negative means forever?
+	Ensure   int           // last n tries are successful.  Minimum 1
+	Retries  int           // after Allow phase
 	Interval time.Duration // if not given, the default is 1s
-	// regardless of allow/ignore/maxRetries, the two below will cause
-	// a return with an error
-	//	FatalOnCheck bool
-	//	FatalOnError bool
-	// If both of these are false, either an error or a false check will
-	// cause the retry to report a failure, after the retries are exhausted
-	//	IgnoreCheck bool // At the end, is the bool still false?
-	//	IgnoreError bool // At the end is th error still being returned?
-
 	//	Context     bool // aggregate timed with number of tries; either or both can be used
 	//	Verbose     bool // Log every error?
 }
@@ -64,7 +62,7 @@ func (r Retry) Run() ([]error, error) {
 
 	// We have to have at least one success
 	var ensure = r.Options.Ensure
-	if ensure == 0 {
+	if ensure < 1 {
 		ensure = 1
 	}
 	for {
