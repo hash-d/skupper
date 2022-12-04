@@ -18,7 +18,7 @@ type Step struct {
 	// Even if false, logs will be done if SKUPPER_TEST_FRAME2_VERBOSE
 	Verbose        bool
 	PreValidator   Validator
-	Modify         Execute
+	Modify         Executor
 	Validator      Validator
 	ValidatorRetry RetryOptions
 }
@@ -50,8 +50,11 @@ type Validator interface {
 	Validate() error
 }
 
+// TODO create ValidatorList, with Validator + RetryOptions
+
 type Execute struct {
 }
 
 type Executor interface {
+	Execute() error
 }

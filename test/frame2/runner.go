@@ -18,11 +18,20 @@ type TestRun struct {
 
 func processStep(step Step) error {
 	log.Printf("Running step doc %q", step.Doc)
-	_, err := Retry{
-		Fn:      step.Validator.Validate,
-		Options: step.ValidatorRetry,
-	}.Run()
-	return err
+	if step.Modify != nil {
+		err := step.Modify.Execute()
+		if err != nil {
+			return fmt.Errorf("validate step failed: %w", err)
+		}
+	}
+	if step.Validator != nil {
+		_, err := Retry{
+			Fn:      step.Validator.Validate,
+			Options: step.ValidatorRetry,
+		}.Run()
+		return err
+	}
+	return nil
 }
 
 func (tr *TestRun) Run(t *testing.T) error {

@@ -16,7 +16,6 @@ import (
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/pkg/qdr"
 	"github.com/skupperproject/skupper/pkg/utils"
-	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/constants"
@@ -261,10 +260,10 @@ func (s *InitTester) ValidateKubernetes(cluster *base.ClusterContext, stdout, st
 	//
 	// Validate ConfigSync
 	if err = (validate.Container{
-		Validate:      frame2.Validate{Step: frame2.Step{Namespace: cluster.GetPromise()}},
+		Namespace:     cluster.GetPromise(),
 		PodSelector:   validate.RouterSelector,
-		ContainerName: types.ConfigSyncContainerName,
 		ExpectExactly: 1,
+		ContainerName: types.ConfigSyncContainerName,
 		CPULimit:      s.ConfigSyncCPULimit,
 		CPURequest:    s.ConfigSyncCPURequest,
 		MemoryLimit:   s.ConfigSyncMemoryLimit,

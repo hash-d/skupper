@@ -1,14 +1,14 @@
 package execute
 
 import (
-	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/utils/base"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Creates a Kubernetes service, with simplified configurations
 type K8SServiceCreate struct {
-	frame2.Execute
+	Namespace   *base.ClusterContextPromise
 	Name        string
 	Annotations map[string]string
 	Labels      map[string]string
@@ -18,7 +18,7 @@ type K8SServiceCreate struct {
 
 //func CreateService(cluster *client.VanClient, name string, annotations, labels, selector map[string]string, ports []apiv1.ServicePort) (*apiv1.Service, error) {
 
-func (ks K8SServiceCreate) Run() error {
+func (ks K8SServiceCreate) Execute() error {
 
 	ports := []apiv1.ServicePort{}
 	for _, port := range ks.Ports {

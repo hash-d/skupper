@@ -2,6 +2,7 @@ package walk
 
 import (
 	"context"
+	"log"
 
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/test/frame2"
@@ -12,17 +13,17 @@ import (
 )
 
 type SegmentSetup struct {
-	frame2.Step
+	Namespace *base.ClusterContextPromise
 }
 
 // Right now, this is a copy of hello world's setup.  The
 // idea, however, is to split it in a bunch of individual
 // frame2.step and then compose it back.
-func (s SegmentSetup) Run() error {
+func (s SegmentSetup) Execute() error {
 
 	runner := s.Namespace.Runner()
 
-	s.Logf("Segment setup: %+v", s)
+	log.Printf("Segment setup: %+v", s)
 	needs := base.ClusterNeeds{
 		NamespaceId:     "hello-world",
 		PublicClusters:  1,
@@ -31,7 +32,7 @@ func (s SegmentSetup) Run() error {
 	if err := runner.Validate(needs); err != nil {
 		return err
 	}
-	s.Logf("Building the environment")
+	log.Printf("Building the environment")
 	_, err := runner.Build(needs, nil)
 	if err != nil {
 		return err
@@ -106,7 +107,7 @@ type SegmentTeardown struct {
 	frame2.Step
 }
 
-func (s SegmentTeardown) Run() error {
+func (s SegmentTeardown) Execute() error {
 	base.TearDownSimplePublicAndPrivate(s.Namespace.Runner())
 	return nil
 }
