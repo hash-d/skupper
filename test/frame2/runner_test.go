@@ -1,3 +1,6 @@
+//go:build meta_test
+// +build meta_test
+
 package frame2_test
 
 import (
@@ -20,11 +23,13 @@ var prv = runner.GetPrivateContextPromise(1)
 
 var tests = frame2.TestRun{
 	Name:     "test-314",
-	Setup:    []frame2.Stepper{},
-	Teardown: []frame2.Stepper{},
-	MainSteps: []frame2.Stepper{
-		validate.Dummy{
-			Results: []error{nil, nil, nil},
+	Setup:    []frame2.Step{},
+	Teardown: []frame2.Step{},
+	MainSteps: []frame2.Step{
+		{
+			Validator: validate.Dummy{
+				Results: []error{nil, nil, nil},
+			},
 		},
 	},
 	Runner: runner,

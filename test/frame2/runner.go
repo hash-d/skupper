@@ -10,39 +10,16 @@ import (
 
 type TestRun struct {
 	Name      string
-	Setup     []Stepper
-	Teardown  []Stepper
-	MainSteps []Stepper
+	Setup     []Step
+	Teardown  []Step
+	MainSteps []Step
 	Runner    *base.ClusterTestRunnerBase
 }
 
-func processStep(step interface{}) error {
-	log.Printf("hehehe %T", step)
-	switch step := step.(type) {
-	case Validator:
-		log.Printf("hohoho")
-		_, err := Retry{
-			Fn:      step.Run,
-			Options: step.GetRetryOptions(),
-		}.Run()
-		return err
-	case Stepper:
-		log.Printf("wha")
-		return step.Run()
-	default:
-		return fmt.Errorf("Invalid step type: %T", step)
-	}
-}
-
-func processValidate(step interface{}) error {
-	log.Printf("Type: %T", step)
-	v, ok := step.(Validator)
-	if !ok {
-		return fmt.Errorf("non-validate")
-	}
+func processStep(step Step) error {
 	_, err := Retry{
-		Fn:      v.Run,
-		Options: v.GetRetryOptions(),
+		Fn:      step.Validator.Validate,
+		Options: step.ValidatorRetry,
 	}.Run()
 	return err
 }
@@ -65,7 +42,7 @@ func (tr *TestRun) Run(t *testing.T) error {
 	}
 	log.Printf("Starting main steps")
 	for _, step := range tr.MainSteps {
-		if err := processValidate(step); err != nil {
+		if err := processStep(step); err != nil {
 			t.Errorf("test failed: %v", err)
 			tr.Runner.DumpTestInfo(tr.Name)
 			break
