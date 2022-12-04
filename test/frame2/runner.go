@@ -17,6 +17,7 @@ type TestRun struct {
 }
 
 func processStep(step Step) error {
+	log.Printf("Running step doc %q", step.Doc)
 	_, err := Retry{
 		Fn:      step.Validator.Validate,
 		Options: step.ValidatorRetry,

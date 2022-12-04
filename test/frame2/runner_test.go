@@ -4,7 +4,9 @@
 package frame2_test
 
 import (
+	"io"
 	"testing"
+	"time"
 
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/validate"
@@ -27,8 +29,14 @@ var tests = frame2.TestRun{
 	Teardown: []frame2.Step{},
 	MainSteps: []frame2.Step{
 		{
-			Validator: validate.Dummy{
-				Results: []error{nil, nil, nil},
+			Doc: "Dummy testing",
+			Validator: &validate.Dummy{
+				Results: []error{io.EOF, nil, io.EOF, nil, io.EOF, nil},
+			},
+			ValidatorRetry: frame2.RetryOptions{
+				Ignore:   2,
+				Retries:  2,
+				Interval: time.Microsecond,
 			},
 		},
 	},

@@ -9,7 +9,7 @@ type Dummy struct {
 	round   int
 }
 
-func (d Dummy) Validate() error {
+func (d *Dummy) Validate() error {
 	ret := d.Results[d.round%len(d.Results)]
 	d.round++
 	log.Printf("Dummy run %d", d.round)
