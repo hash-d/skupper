@@ -268,7 +268,7 @@ func (s *InitTester) ValidateKubernetes(cluster *base.ClusterContext, stdout, st
 		CPURequest:    s.ConfigSyncCPURequest,
 		MemoryLimit:   s.ConfigSyncMemoryLimit,
 		MemoryRequest: s.ConfigSyncMemoryRequest,
-	}.ValidateMe()); err != nil {
+	}.Run()); err != nil {
 		return
 	}
 

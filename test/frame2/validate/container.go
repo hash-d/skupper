@@ -7,7 +7,6 @@ import (
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/test/frame2"
-	"github.com/skupperproject/skupper/test/utils/base"
 )
 
 var (
@@ -17,7 +16,6 @@ var (
 
 type Container struct {
 	frame2.Validate
-	Namespace        *base.ClusterContext
 	PodSelector      string
 	ContainerName    string // If empty, check all containers on selected pods
 	ExpectNone       bool   // If true, it will be an error if any pods are found
@@ -29,7 +27,7 @@ type Container struct {
 	CheckUnrequested bool // Normally an empty CPU/Memory Limit/Request is not checked
 }
 
-func (c Container) ValidateMe() error {
+func (c Container) Run() error {
 	log.Printf("XXXX validating %v", c)
 
 	cluster := c.Namespace

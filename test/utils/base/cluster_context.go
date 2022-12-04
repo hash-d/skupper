@@ -167,13 +167,13 @@ func (cc *ClusterContext) DumpTestInfo(dirName string) {
 	// information...
 	log.Printf("pod container whose last termination was non-zero:")
 	out, err := cc.KubectlExec(`get pod -o go-template='
-	    {{- range .items -}} 
-	      {{- with $pod := . -}} 
-		{{- range $pod.status.containerStatuses -}} 
-		  {{- with $cs := . -}} 
+	    {{- range .items -}}
+	      {{- with $pod := . -}}
+		{{- range $pod.status.containerStatuses -}}
+		  {{- with $cs := . -}}
 		    {{- /* do we have a lastStae with exitCode on this cs? */ -}}
 		    {{- if $cs.lastState.terminated.exitCode -}}
-		      {{-  if ne $cs.lastState.terminated.exitCode 0 -}} 
+		      {{-  if ne $cs.lastState.terminated.exitCode 0 -}}
 			{{ $pod.metadata.name }}{{ " " -}}
 			{{ $cs.name }}{{ " " -}}
 			lastExitCode: {{- $cs.lastState.terminated.exitCode }}{{ " " -}}
@@ -224,4 +224,30 @@ func (cc *ClusterContext) DumpTestInfo(dirName string) {
 	if err != nil {
 		log.Printf("failed gathering node condition: %v", err)
 	}
+}
+
+// Some configuration may require a reference to a ClusterContext before it is
+// created.  In that case, they can ask for a ClusterContextPromise, instead.
+type ClusterContextPromise struct {
+	cluster        *ClusterTestRunnerBase
+	private        bool
+	id             int
+	clusterContext *ClusterContext
+}
+
+// Satisfy the promise.  The returned error comes from the call to
+// ClusterTestRunnerBase.GetContext()
+// A successful run caches the ClusterContext for future calls
+// (which will then never fail)
+func (c *ClusterContextPromise) Satisfy() (*ClusterContext, error) {
+	var err error
+	if c.clusterContext == nil {
+		c.clusterContext, err = c.cluster.GetContext(c.private, c.id)
+	}
+	return c.clusterContext, err
+}
+
+// Returns the stored, private reference to the ClusterTestRunnerBase
+func (c *ClusterContextPromise) Runner() *ClusterTestRunnerBase {
+	return c.cluster
 }

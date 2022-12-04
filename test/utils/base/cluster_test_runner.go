@@ -112,6 +112,22 @@ func (c *ClusterTestRunnerBase) GetContext(private bool, id int) (*ClusterContex
 	return nil, fmt.Errorf("ClusterContexts list is empty!")
 }
 
+func (c *ClusterTestRunnerBase) GetPrivateContextPromise(id int) *ClusterContextPromise {
+	return c.GetContextPromise(true, id)
+}
+
+func (c *ClusterTestRunnerBase) GetPublicContextPromise(id int) *ClusterContextPromise {
+	return c.GetContextPromise(false, id)
+}
+
+func (c *ClusterTestRunnerBase) GetContextPromise(private bool, id int) *ClusterContextPromise {
+	return &ClusterContextPromise{
+		cluster: c,
+		private: private,
+		id:      id,
+	}
+}
+
 func (c *ClusterTestRunnerBase) createClusterContexts(needs ClusterNeeds) error {
 	if err := c.createClusterContext(needs, false); err != nil {
 		return err
