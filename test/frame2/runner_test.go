@@ -14,7 +14,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRunner(t *testing.T) {
+func TestTestRunner(t *testing.T) {
 	assert.Assert(t, tests.Run(t))
 }
 
@@ -29,13 +29,29 @@ var tests = frame2.TestRun{
 	Teardown: []frame2.Step{},
 	MainSteps: []frame2.Step{
 		{
-			Doc: "Dummy testing",
+			Name: "dummy",
+			Doc:  "Dummy testing",
 			Validator: &validate.Dummy{
-				Results: []error{io.EOF, nil, io.EOF, nil, io.EOF, nil},
+				Results: []error{io.EOF, nil, nil, io.EOF, nil, io.EOF, nil},
 			},
 			ValidatorRetry: frame2.RetryOptions{
 				Ignore:   2,
-				Retries:  2,
+				Retries:  1,
+				Interval: time.Microsecond,
+			},
+		},
+		{
+			Name: "sub",
+			Doc:  "Testing substeps",
+			Substep: &frame2.Step{
+				Validator: &validate.Dummy{
+					Results: []error{io.EOF, nil, nil, io.EOF, nil, io.EOF, nil},
+				},
+			},
+			SubstepRetry: frame2.RetryOptions{
+				Ignore:   2,
+				Retries:  1,
+				Ensure:   2,
 				Interval: time.Microsecond,
 			},
 		},

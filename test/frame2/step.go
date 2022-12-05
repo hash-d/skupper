@@ -13,6 +13,7 @@ const EnvFrame2Verbose = "SKUPPER_TEST_FRAME2_VERBOSE"
 type Step struct {
 	Doc       string
 	Namespace *base.ClusterContextPromise
+	Name      string
 	Level     int
 	// Whether the step should always print logs
 	// Even if false, logs will be done if SKUPPER_TEST_FRAME2_VERBOSE
@@ -21,6 +22,8 @@ type Step struct {
 	Modify         Executor
 	Validator      Validator
 	ValidatorRetry RetryOptions
+	Substep        *Step
+	SubstepRetry   RetryOptions
 }
 
 func (s Step) Logf(format string, v ...interface{}) {
