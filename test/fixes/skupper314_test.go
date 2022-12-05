@@ -30,7 +30,8 @@ var pubBackDoesntWork = frame2.Step{
 		CurlOptions: tools.CurlOpts{Timeout: 10},
 	},
 	ValidatorRetry: frame2.RetryOptions{
-		Allow: 10,
+		Allow:  10,
+		Ignore: 10,
 	},
 	ExpectError: true,
 }
@@ -43,7 +44,8 @@ var prvFrontDoesntWork = frame2.Step{
 		CurlOptions: tools.CurlOpts{Timeout: 10},
 	},
 	ValidatorRetry: frame2.RetryOptions{
-		Allow: 10,
+		Allow:  10,
+		Ignore: 10,
 	},
 	ExpectError: true,
 }
@@ -196,10 +198,12 @@ var tests = frame2.TestRun{
 							},
 						},
 					},
-					&pubFrontWorks,
-					&prvBackWorks,
+					// First try what's supposed to change...
 					&pubBackDoesntWork,
 					&prvFrontDoesntWork,
+					// Then what's supposed to remain working
+					&pubFrontWorks,
+					&prvBackWorks,
 				},
 			},
 		},
