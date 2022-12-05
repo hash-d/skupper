@@ -50,12 +50,39 @@ func processStep_(t *testing.T, step Step) error {
 			return fmt.Errorf("substep failed: %w", err)
 		}
 	}
+	for _, subStep := range step.Substeps {
+		_, err := Retry{
+			Fn: func() error {
+				return processStep(t, *subStep)
+			},
+			Options: subStep.SubstepRetry,
+		}.Run()
+		if err != nil {
+			return fmt.Errorf("substep failed: %w", err)
+		}
+
+	}
 	if step.Validator != nil {
 		_, err := Retry{
 			Fn:      step.Validator.Validate,
 			Options: step.ValidatorRetry,
 		}.Run()
-		return err
+		if step.ExpectError {
+			if err == nil {
+				return fmt.Errorf("Error expected but not realised")
+			} else {
+				return nil
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	for _, v := range step.Validators {
+		err := v.Validate()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

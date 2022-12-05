@@ -4,6 +4,7 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Creates a Kubernetes service, with simplified configurations
@@ -46,4 +47,64 @@ func (ks K8SServiceCreate) Execute() error {
 		return err
 	}
 	return nil
+}
+
+type K8SServiceAnnotate struct {
+	Namespace   *base.ClusterContextPromise
+	Name        string
+	Annotations map[string]string
+}
+
+func (ksa K8SServiceAnnotate) Execute() error {
+	cluster, err := ksa.Namespace.Satisfy()
+	if err != nil {
+		return err
+	}
+	// Retrieving service
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksa.Name, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if svc.Annotations == nil {
+		svc.Annotations = map[string]string{}
+	}
+
+	for k, v := range ksa.Annotations {
+		svc.Annotations[k] = v
+	}
+	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(svc)
+	return err
+
+}
+
+type K8SServiceRemoveAnnotation struct {
+	Namespace   *base.ClusterContextPromise
+	Name        string
+	Annotations []string
+}
+
+func (ksr K8SServiceRemoveAnnotation) Execute() error {
+	cluster, err := ksr.Namespace.Satisfy()
+	if err != nil {
+		return err
+	}
+	// Retrieving service
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksr.Name, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if svc.Annotations == nil {
+		// Nothing to remove
+		// TODO.  Perhaps a option to set an error if annotation not found to be removed
+		return nil
+	}
+
+	for _, k := range ksr.Annotations {
+		delete(svc.Annotations, k)
+	}
+	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(svc)
+	return err
+
 }

@@ -21,9 +21,15 @@ type Step struct {
 	PreValidator   Validator
 	Modify         Executor
 	Validator      Validator
+	Validators     []Validator
 	ValidatorRetry RetryOptions
 	Substep        *Step
+	Substeps       []*Step
 	SubstepRetry   RetryOptions
+	// A simple way to invert the meaning of the Validator.  Validators
+	// are encouraged to provide more specific negative testing behaviors,
+	// but this serves for simpler testing
+	ExpectError bool
 }
 
 func (s Step) Logf(format string, v ...interface{}) {
