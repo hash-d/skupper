@@ -45,10 +45,11 @@ var tests = frame2.TestRun{
 			Doc:  "Testing substeps",
 			Substep: &frame2.Step{
 				Validator: &validate.Dummy{
-					Results: []error{io.EOF, nil, nil, io.EOF, nil, io.EOF, nil},
+					Results: []error{io.EOF, nil, io.EOF, nil, nil},
 				},
 			},
 			SubstepRetry: frame2.RetryOptions{
+				Allow:    1,
 				Ignore:   2,
 				Retries:  1,
 				Ensure:   2,

@@ -43,7 +43,7 @@ func (c Curl) Validate() error {
 	log.Printf("- HTTP version: %v", resp.HttpVersion)
 	log.Printf("- Reason phrase: %v", resp.ReasonPhrase)
 	log.Printf("- Headers:\n%v", resp.Headers)
-	log.Printf("- Body:\n", resp.Body)
+	log.Printf("- Body:\n%v", resp.Body)
 
 	if c.Fail400Plus && resp.StatusCode >= 400 {
 		return fmt.Errorf("curl invokation returned status code %d", resp.StatusCode)

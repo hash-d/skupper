@@ -144,7 +144,7 @@ func (c Cmd) Execute() error {
 	cmd.Stderr = stderr
 
 	// Running the skupper command
-	log.Printf("f2.exec.Cmd running: %s %s\n", c.Command, strings.Join(c.Args, " "))
+	log.Printf("f2.execute.Cmd running: %s %s\n", c.Command, strings.Join(c.Args, " "))
 	cmdErr := cmd.Run()
 
 	if c.CmdResult != nil {

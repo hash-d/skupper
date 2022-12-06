@@ -88,7 +88,12 @@ func (r Retry) Run() ([]error, error) {
 		}
 		// This try failed, and we ran out of retries.  Note retries only count after Allow expires
 		if totalTries > r.Options.Allow && retries >= r.Options.Retries {
-			return results, fmt.Errorf("max retry attempts reached: %w", err)
+			if r.Options.Retries > 1 {
+				return results, fmt.Errorf("max retry attempts reached: %w", err)
+			} else {
+				return results, err
+			}
+
 		}
 		consecutiveSuccess = 0
 		ignoredSuccess = 0
