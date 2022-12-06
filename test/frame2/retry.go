@@ -42,6 +42,9 @@ type RetryOptions struct {
 	Interval time.Duration // if not given, the default is 1s
 	//	Context     bool // aggregate timed with number of tries; either or both can be used
 	//	Verbose     bool // Log every error?
+
+	Min int // TODO Run as normal, but delay report until that number of tries have been done
+	// This can be used to generate sats from the results
 }
 
 func (r Retry) Run() ([]error, error) {

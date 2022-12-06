@@ -19,12 +19,17 @@ type TestRun struct {
 func processStep(t *testing.T, step Step) error {
 	var err error
 	if step.Name != "" {
-		ret := t.Run(step.Name, func(t *testing.T) {
-			err = processStep_(t, step)
+		_ = t.Run(step.Name, func(t *testing.T) {
+			processErr := processStep_(t, step)
+			if processErr != nil {
+				// For named tests, we do not return the error up; we
+				// just mark it as a failed test
+				t.Errorf("test failed: %v", processErr)
+			}
 		})
-		if !ret {
-			err = fmt.Errorf("test failed: %v", err)
-		}
+		//		if !ret {
+		//			err = fmt.Errorf("test failed: %v", err)
+		//		}
 	} else {
 		log.Printf("Running step doc %q", step.Doc)
 		err = processStep_(t, step)
