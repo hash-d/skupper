@@ -147,7 +147,7 @@ var tests = frame2.TestRun{
 			Name: "repeat",
 			Doc:  "Repeat the same test many times",
 			SubstepRetry: frame2.RetryOptions{
-				Ensure: 30,
+				Ensure: 300,
 			},
 			Substep: &frame2.Step{
 				Name: "number",
@@ -158,7 +158,7 @@ var tests = frame2.TestRun{
 							Namespace: pub,
 							Name:      "hello-world-frontend-k8s-service",
 							Annotations: map[string]string{
-								types.ProxyQualifier:   "http",
+								types.ProxyQualifier:   "tcp",
 								types.AddressQualifier: "hello-world-frontend-k8s-service",
 							},
 						},
@@ -168,7 +168,7 @@ var tests = frame2.TestRun{
 							Namespace: prv,
 							Name:      "hello-world-backend-k8s-service",
 							Annotations: map[string]string{
-								types.ProxyQualifier:   "http",
+								types.ProxyQualifier:   "tcp",
 								types.AddressQualifier: "hello-world-backend-k8s-service",
 							},
 						},
