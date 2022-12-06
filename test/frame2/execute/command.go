@@ -21,13 +21,26 @@ const CmdDefaultTimeout = 2 * time.Minute
 //
 // If a CmdResult is provided by the caller, it will be populated
 // with the stdout, stderr and error returned by the exec.Command
-// execution, for furthe processing.
+// execution, for further processing.
 //
 // Yet, most output check should be possible using the provided
 // cli.Expect configuration.
 //
 // If both AcceptReturn and FailReturn are defined and the return
 // status is not present on either, an error will be returned
+//
+// This is basically a wrapper around Go's exec.Cmd, and its configuration
+// even uses that structured, embedded.  There are some differences,
+// howeever:
+//
+// - There is a Shell option
+// - A timeout can be defined directly, in addition to a Context
+// - In case both context and timeout are given, the timeout is applied
+//   over the context (ie, a timeout context wrapping the original context)
+// - If neither are provided, there is a default timeout.  If the user
+//   provides their own Context, though, it's up to them to make sure
+//   the command does not run forever.
+//
 type Cmd struct {
 	// The command to be executed, as if exec.Command() had been called (ie, it
 	// looks for the command on the PATH, if no slashes on it).  If empty, then
@@ -75,9 +88,6 @@ func containsInt(needle int, haystack []int) bool {
 }
 
 func (c Cmd) Execute() error {
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-
 	ctx := c.Ctx
 	// If no Context given, let's have a safe timeout
 	if ctx == nil {
@@ -127,6 +137,9 @@ func (c Cmd) Execute() error {
 	// mergo will not merge Args, so we have to force it
 	cmd.Args = tmpcmd.Args
 
+	// TODO: if the user suplied their own stdout/stderr, use that, do not reset
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

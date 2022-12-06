@@ -20,15 +20,18 @@ import (
 var unknownCommand = "you-dont-have-a-command-with-this-name-do-you"
 var doneCtx, _ = context.WithTimeout(context.Background(), time.Microsecond)
 
+var resultCommunication = CmdResult{}
+
 func TestCmd(t *testing.T) {
 	tests.Run(t)
 }
 
 type cmdValidator struct {
-	cmd            Cmd
-	errorOnCommand bool
-	errorOnExpect  bool
-	nonCmdErr      bool
+	cmd                 Cmd
+	errorOnCommand      bool
+	errorOnExpect       bool
+	nonCmdErr           bool
+	resultCommunication *CmdResult
 }
 
 func (ct cmdValidator) Validate() error {
@@ -378,6 +381,14 @@ var tests = frame2.TestRun{
 					FailReturn:   []int{3, 4, 5, 6},
 				},
 				errorOnCommand: true,
+			},
+		}, {
+			Name: "TODO",
+			Doc:  "resultCommunication and stdout/stderr supplied by the user",
+			Validator: cmdValidator{
+				cmd: Cmd{
+					Command: "false",
+				},
 			},
 		},
 	},
