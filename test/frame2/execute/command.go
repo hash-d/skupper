@@ -38,12 +38,12 @@ type Cmd struct {
 	// and Cmd.Args with those returned by exec.Command (ie, we'll let Go find
 	// the path to the command).
 	exec.Cmd
-	Ctx     context.Context
-	Timeout time.Duration // If not provided, a default timeout of 2 min is used
-	//Shell        bool
-	cli.Expect         // Configures checks on Stdout and Stderr
-	AcceptReturn []int // consider these return status as a success.  Default only 0
-	FailReturn   []int // Fail on any of these return status.  Default anything other than 0
+	Ctx          context.Context
+	Timeout      time.Duration // If not provided, a default timeout of 2 min is used
+	Shell        bool          // if set, Cmd.Path and Cmd.Args are ignored; use Command under sh -c
+	cli.Expect                 // Configures checks on Stdout and Stderr
+	AcceptReturn []int         // consider these return status as a success.  Default only 0
+	FailReturn   []int         // Fail on any of these return status.  Default anything other than 0
 
 	*CmdResult
 }
@@ -60,7 +60,7 @@ type CmdError struct {
 }
 
 func (ce CmdError) Error() string {
-	return fmt.Sprintf("cmd: %s, expect: %s", ce.Cmd, ce.Expect)
+	return fmt.Sprintf("f2.execute.Cmd/cmd: %s(%T), /Expect: %s", ce.Cmd, ce.Cmd, ce.Expect)
 }
 
 // Change this by Go 1.18's generic slices.Contains?
@@ -106,14 +106,19 @@ func (c Cmd) Execute() error {
 	var tmpcmd exec.Cmd
 	// Preparing the command to run
 	if c.Command == "" {
+		if c.Shell {
+			return fmt.Errorf("execute.Cmd configuration error - shell requested, but empty Command")
+		}
 		// No command specified; we'll use the exec.Cmd structure as-is, just
 		// overriding the context
 		tmpcmd = c.Cmd
 	} else {
-		tmpcmd = *exec.Command(c.Command, c.Cmd.Args...)
+		if c.Shell {
+			tmpcmd = *exec.Command("sh", "-c", c.Command)
+		} else {
+			tmpcmd = *exec.Command(c.Command, c.Cmd.Args...)
+		}
 	}
-	log.Printf("original: %#v", c.Cmd)
-	log.Printf("tmpcmp:   %#v", tmpcmd)
 
 	// First, just give me exec.Cmd with a context, with an already-resolved path
 	cmd := exec.CommandContext(ctx, tmpcmd.Path)
@@ -125,10 +130,8 @@ func (c Cmd) Execute() error {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	log.Printf("Actual   : %#v", cmd)
-
 	// Running the skupper command
-	log.Printf("Running: %s %s\n", c.Command, strings.Join(c.Args, " "))
+	log.Printf("f2.exec.Cmd running: %s %s\n", c.Command, strings.Join(c.Args, " "))
 	cmdErr := cmd.Run()
 
 	if c.CmdResult != nil {
@@ -143,14 +146,14 @@ func (c Cmd) Execute() error {
 		fmt.Printf("Error: %v\n", cmdErr)
 	}
 
-	expectErr := c.Expect.Check(stdout.String(), stderr.String())
-
 	var returnedCmdError error
 
+	cmdErrCopy := cmdErr
 	// The nil test is required, and must be outside of the type assertion.
-	// Otherwise, go makes cmdErr assuma a nil ExitError form within the if,
+	// Otherwise, go makes cmdErr assume a nil ExitError form within the if,
 	// and that does not count as a true nil
 	if cmdErr != nil {
+		// Was it an execution error?  If so, we want to save it
 		exitError, ok := cmdErr.(*exec.ExitError)
 		if ok {
 			ret := exitError.ExitCode()
@@ -185,7 +188,7 @@ func (c Cmd) Execute() error {
 					}
 				} else {
 					// Neither list set; we can simply return what we got
-					if cmdErr == nil {
+					if cmdErrCopy == nil {
 						returnedCmdError = nil
 					} else {
 						returnedCmdError = cmdErr
@@ -194,10 +197,12 @@ func (c Cmd) Execute() error {
 			}
 		} else {
 			// Something happened outside of the realm of just getting the
-			// command's exit code
-			returnedCmdError = exitError
+			// command's exit code.
+			returnedCmdError = cmdErrCopy
 		}
 	}
+
+	expectErr := c.Expect.Check(stdout.String(), stderr.String())
 
 	var err error
 	// It's only an error if either side is an error
