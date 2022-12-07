@@ -27,7 +27,7 @@ func (s SegmentSetup) Execute() error {
 	needs := base.ClusterNeeds{
 		NamespaceId:     "hello-world",
 		PublicClusters:  1,
-		PrivateClusters: 1,
+		PrivateClusters: 2,
 	}
 	if err := runner.Validate(needs); err != nil {
 		return err
@@ -44,6 +44,11 @@ func (s SegmentSetup) Execute() error {
 		return err
 	}
 	prv, err := runner.GetPrivateContext(1)
+	if err != nil {
+		return err
+	}
+
+	prv2, err := runner.GetPrivateContext(2)
 	if err != nil {
 		return err
 	}
@@ -66,6 +71,12 @@ func (s SegmentSetup) Execute() error {
 	if err = base.ConnectSimplePublicPrivate(ctx, runner); err != nil {
 		return err
 	}
+	err = prv2.CreateNamespace()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Segment done")
 
 	return nil
 }

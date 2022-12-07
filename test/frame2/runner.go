@@ -110,6 +110,7 @@ func (tr *TestRun) Run(t *testing.T) error {
 	log.Printf("Starting setup")
 	for _, step := range tr.Setup {
 		if err := processStep(t, step); err != nil {
+			t.Errorf("setup failed: %v", err)
 			return err
 		}
 	}
@@ -124,7 +125,9 @@ func (tr *TestRun) Run(t *testing.T) error {
 	log.Printf("Starting teardown")
 	for _, step := range tr.Teardown {
 		if err := processStep(t, step); err != nil {
-			return err
+			t.Errorf("teardown failed: %v", err)
+			// We do not return here; we keep going doing whatever
+			// teardown we can
 		}
 	}
 	return nil

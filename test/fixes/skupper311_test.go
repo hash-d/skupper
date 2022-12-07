@@ -20,6 +20,7 @@ func Test311(t *testing.T) {
 	var runner = &base.ClusterTestRunnerBase{}
 	var pub = runner.GetPublicContextPromise(1)
 	var prv = runner.GetPrivateContextPromise(1)
+	var prv2 = runner.GetPrivateContextPromise(2)
 	var retryAllow10 = frame2.RetryOptions{
 		Allow: 100,
 	}
@@ -32,6 +33,18 @@ func Test311(t *testing.T) {
 					Namespace: prv,
 				},
 				// TODO Move all below to a 'setup hello world' kind of thing
+			}, {
+				Doc: "deploy Skupper on prv2",
+				Modify: execute.SkupperInstallSimple{
+					Namespace: prv2,
+				},
+			}, {
+				Doc: "connect prv to prv2",
+				Modify: execute.SkupperConnect{
+					Name: "third",
+					From: prv,
+					To:   prv2,
+				},
 			}, {
 				Doc: "Create frontend service",
 				Modify: execute.K8SServiceCreate{
@@ -219,6 +232,7 @@ func Test311(t *testing.T) {
 						Name: "check-private-outgoing",
 						Modify: tester.CliLinkStatus{
 							CliLinkStatus: execute.CliLinkStatus{
+								Timeout: 10 * time.Second,
 								CliSkupper: execute.CliSkupper{
 									ClusterContext: prv,
 								},
@@ -231,11 +245,13 @@ func Test311(t *testing.T) {
 							},
 							StrictIncoming: true,
 							StrictOutgoing: true,
+							RetryOptions:   &retryAllow10,
 						},
 					}, {
 						Name: "check-public-incoming",
 						Modify: tester.CliLinkStatus{
 							CliLinkStatus: execute.CliLinkStatus{
+								Timeout: 10 * time.Second,
 								CliSkupper: execute.CliSkupper{
 									ClusterContext: pub,
 								},
@@ -248,6 +264,7 @@ func Test311(t *testing.T) {
 							},
 							StrictIncoming: true,
 							StrictOutgoing: true,
+							RetryOptions:   &retryAllow10,
 						},
 					},
 				},

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"gotest.tools/assert"
@@ -24,8 +25,16 @@ var pub = runner.GetPublicContextPromise(1)
 var prv = runner.GetPrivateContextPromise(1)
 
 var tests = frame2.TestRun{
-	Name:     "test-314",
-	Setup:    []frame2.Step{},
+	Name: "test-runner",
+	Setup: []frame2.Step{
+		{
+			Doc:    "Please succeed",
+			Modify: execute.Success{},
+		}, {
+			Doc:    "Fail here, please",
+			Modify: execute.Fail{},
+		},
+	},
 	Teardown: []frame2.Step{},
 	MainSteps: []frame2.Step{
 		{
