@@ -21,6 +21,10 @@ func (c Curl) Validate() error {
 	if c.DeployCurl {
 		return fmt.Errorf("validate.Curl.DeployCurl not implemented yet")
 	}
+	if c.CurlOptions.Timeout == 0 {
+		// There is no reason to give Curl no time to respond
+		c.CurlOptions.Timeout = 2
+	}
 	cluster, err := c.Namespace.Satisfy()
 	if err != nil {
 		return err
@@ -36,6 +40,7 @@ func (c Curl) Validate() error {
 	)
 	log.Printf("- Output:\n%v", resp.Output)
 	if err != nil {
+		log.Printf("- Err: %v", err)
 		return fmt.Errorf("curl invokation failed: %w", err)
 	}
 

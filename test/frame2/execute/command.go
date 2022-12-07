@@ -88,6 +88,11 @@ func containsInt(needle int, haystack []int) bool {
 }
 
 func (c Cmd) Execute() error {
+	// We only create if it was not sent by the client
+	if c.CmdResult == nil {
+		c.CmdResult = &CmdResult{}
+	}
+
 	ctx := c.Ctx
 	// If no Context given, let's have a safe timeout
 	if ctx == nil {
@@ -147,11 +152,9 @@ func (c Cmd) Execute() error {
 	log.Printf("f2.execute.Cmd running: %s %s\n", c.Command, strings.Join(c.Args, " "))
 	cmdErr := cmd.Run()
 
-	if c.CmdResult != nil {
-		c.CmdResult.Stdout = stdout.String()
-		c.CmdResult.Stderr = stdout.String()
-		c.CmdResult.Err = cmdErr
-	}
+	c.CmdResult.Stdout = stdout.String()
+	c.CmdResult.Stderr = stderr.String()
+	c.CmdResult.Err = cmdErr
 
 	if base.IsVerboseCommandOutput() {
 		fmt.Printf("STDOUT:\n%v\n", stdout.String())

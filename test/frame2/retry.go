@@ -3,6 +3,7 @@ package frame2
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -41,6 +42,7 @@ type RetryOptions struct {
 	Ensure   int           // last n tries are successful.  Minimum 1
 	Retries  int           // after Allow phase
 	Interval time.Duration // if not given, the default is 1s
+	Quiet    bool          // if true, no attempt logs
 	//	Context     bool // aggregate timed with number of tries; either or both can be used
 	//	Verbose     bool // Log every error?
 
@@ -89,6 +91,12 @@ func (r Retry) Run() ([]error, error) {
 				return results, nil
 			}
 			// It's a success, but not enough; we'll try again
+			if !r.Options.Quiet {
+				log.Printf(
+					"Attempt %d succeeded; %d consecutive success, %d ignored",
+					totalTries, consecutiveSuccess, ignoredSuccess,
+				)
+			}
 			continue
 		}
 		// This try failed, and we ran out of retries.  Note retries only count after Allow expires
@@ -105,6 +113,12 @@ func (r Retry) Run() ([]error, error) {
 		// If I got down here and it's past Allow time, the next run will be a retry
 		if totalTries > r.Options.Allow {
 			retries++
+		}
+		if !r.Options.Quiet {
+			log.Printf(
+				"Attempt %d failed (allow %d first + %d retries used)",
+				totalTries, r.Options.Allow, retries,
+			)
 		}
 		<-tick.C
 	}

@@ -20,8 +20,11 @@ func processStep(t *testing.T, step Step) error {
 	var err error
 	if step.Name != "" {
 		_ = t.Run(step.Name, func(t *testing.T) {
+			log.Printf("Doc: %v", step.Doc)
 			processErr := processStep_(t, step)
 			if processErr != nil {
+				// This make it easier to find the failures in log files
+				log.Printf("test %q failed", step.Name)
 				// For named tests, we do not return the error up; we
 				// just mark it as a failed test
 				t.Errorf("test failed: %v", processErr)
@@ -102,6 +105,8 @@ func (tr *TestRun) Run(t *testing.T) error {
 		tr.Runner = &base.ClusterTestRunnerBase{}
 	}
 
+	// TODO: allow for optional interface.  If the step also implements Teardown(),
+	// execute it and add its result to the teardown list.
 	log.Printf("Starting setup")
 	for _, step := range tr.Setup {
 		if err := processStep(t, step); err != nil {

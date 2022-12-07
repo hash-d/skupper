@@ -1,8 +1,9 @@
 package execute
 
 import (
+	"log"
+
 	"github.com/skupperproject/skupper/test/utils/base"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type DeployScale struct {
@@ -12,6 +13,7 @@ type DeployScale struct {
 }
 
 func (d DeployScale) Execute() error {
+	log.Printf("execute.DeployScale")
 
 	cluster, err := d.Namespace.Satisfy()
 
@@ -25,7 +27,8 @@ func (d DeployScale) Execute() error {
 	deploy := d.DeploySelector.Deploy
 
 	deploy.Spec.Replicas = &d.Replicas
-	_, err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.Namespace).Get(d.DeploySelector.Name, v1.GetOptions{})
+	_, err = cluster.VanClient.KubeClient.AppsV1().
+		Deployments(cluster.Namespace).Update(deploy)
 
 	return err
 
