@@ -1,6 +1,7 @@
 package frame2
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -44,7 +45,11 @@ type RetryOptions struct {
 	//	Verbose     bool // Log every error?
 
 	Min int // TODO Run as normal, but delay report until that number of tries have been done
-	// This can be used to generate sats from the results
+	// This can be used to generate stats from the results
+
+	KeepTrying bool             // TODO Ignores Retries; keep trying until Ensure is met.  Ctx must be set
+	Ctx        *context.Context // TODO: stop on context
+	Timeout    time.Duration    // Wrapps, updated Ctx, so others can be use it
 }
 
 func (r Retry) Run() ([]error, error) {

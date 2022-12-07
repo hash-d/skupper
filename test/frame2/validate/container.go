@@ -35,7 +35,6 @@ func (c Container) Run() error {
 		return err
 	}
 
-	// retrieving the router pods
 	pods, err := kube.GetPods(c.PodSelector, cluster.Namespace, cluster.VanClient.KubeClient)
 	if err != nil {
 		return err
