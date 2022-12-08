@@ -14,6 +14,7 @@ type TestRun struct {
 	Teardown  []Step
 	MainSteps []Step
 	Runner    *base.ClusterTestRunnerBase
+	teardowns []Executor
 }
 
 func processStep(t *testing.T, step Step) error {
@@ -98,7 +99,7 @@ func processStep_(t *testing.T, step Step) error {
 func (tr *TestRun) Run(t *testing.T) error {
 
 	if tr.Name == "" {
-		return fmt.Errorf("test name must be defined")
+		t.Fatal("test name must be defined")
 	}
 
 	if tr.Runner == nil {
@@ -109,6 +110,11 @@ func (tr *TestRun) Run(t *testing.T) error {
 	// execute it and add its result to the teardown list.
 	log.Printf("Starting setup")
 	for _, step := range tr.Setup {
+		//		if step.Modify != nil {
+		//			if step, ok := step.Modify.(TearDowner); ok {
+		//				tr.teardowns = append(tr.teardowns, step.TearDown())
+		//			}
+		//		}
 		if err := processStep(t, step); err != nil {
 			t.Errorf("setup failed: %v", err)
 			return err
@@ -122,6 +128,16 @@ func (tr *TestRun) Run(t *testing.T) error {
 			break
 		}
 	}
+
+	log.Printf("Starting auto-teardown")
+	for _, td := range tr.teardowns {
+		if err := td.Execute(); err != nil {
+			t.Errorf("auto-teardown failed: %v", err)
+			// We do not return here; we keep going doing whatever
+			// teardown we can
+		}
+	}
+
 	log.Printf("Starting teardown")
 	for _, step := range tr.Teardown {
 		if err := processStep(t, step); err != nil {

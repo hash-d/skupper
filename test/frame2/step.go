@@ -67,3 +67,7 @@ type Execute struct {
 type Executor interface {
 	Execute() error
 }
+
+type TearDowner interface {
+	TearDown() Executor
+}

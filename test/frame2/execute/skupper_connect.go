@@ -2,7 +2,8 @@ package execute
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"log"
 	"math/rand"
 	"strconv"
 
@@ -16,9 +17,14 @@ type SkupperConnect struct {
 	From *base.ClusterContextPromise
 	To   *base.ClusterContextPromise
 	Ctx  context.Context
+
+	// Use this if the From namespace does not have a test runner
+	// TODO
+	RunnerBase *base.ClusterTestRunnerBase
 }
 
 func (sc SkupperConnect) Execute() error {
+	log.Printf("execute.SkupperConnect")
 	var err error
 
 	ToCluster, err := sc.To.Satisfy()
@@ -30,41 +36,22 @@ func (sc SkupperConnect) Execute() error {
 		return err
 	}
 
+	log.Printf("connecting %v to %v", fromCluster.Namespace, ToCluster.Namespace)
+
 	ctx := sc.Ctx
-	r := sc.From.Runner()
-	if r == nil {
-		return fmt.Errorf("SkupperConnect: empty runner on the From cluster")
+
+	var r base.ClusterTestRunnerBase
+	if sc.RunnerBase != nil {
+		r = *sc.RunnerBase
+	} else {
+		r := sc.From.Runner()
+		log.Printf("*")
+		if r == nil {
+			return errors.New("SkupperConnect: empty runner on the From cluster")
+		}
 	}
 
-	/*
-
-		routerCreateSpecFrom := types.SiteConfigSpec{
-			SkupperName:       "",
-			RouterMode:        string(types.TransportModeEdge),
-			EnableController:  true,
-			EnableServiceSync: true,
-			EnableConsole:     true,
-			AuthMode:          types.ConsoleAuthModeUnsecured,
-			User:              "admin",
-			Password:          "admin",
-			Ingress:           ToCluster.VanClient.GetIngressDefault(),
-			Replicas:          1,
-			Router:            constants.DefaultRouterOptions(nil),
-		}
-
-		testContext, cancel := context.WithTimeout(ctx, types.DefaultTimeoutDuration*2)
-		defer cancel()
-
-		publicSiteConfig, err := ToCluster.VanClient.SiteConfigCreate(context.Background(), routerCreateSpecTo)
-		if err != nil {
-			return err
-		}
-
-		err = ToCluster.VanClient.RouterCreate(testContext, *publicSiteConfig)
-		if err != nil {
-			return err
-		}
-	*/
+	log.Printf("*")
 
 	i := rand.Intn(1000)
 	// TODO redo this file name: use domain names, but keep the random thing
@@ -74,23 +61,13 @@ func (sc SkupperConnect) Execute() error {
 		return err
 	}
 
-	/*
-		// Configure private cluster.
-		routerCreateSpecFrom.SkupperNamespace = fromCluster.Namespace
-		privateSiteConfig, err := fromCluster.VanClient.SiteConfigCreate(context.Background(), routerCreateSpecFrom)
-
-		err = fromCluster.VanClient.RouterCreate(testContext, *privateSiteConfig)
-		if err != nil {
-			return err
-		}
-	*/
-
 	var connectorCreateOpts types.ConnectorCreateOptions = types.ConnectorCreateOptions{
 		SkupperNamespace: fromCluster.Namespace,
 		Name:             sc.Name,
 		Cost:             sc.Cost,
 	}
 	_, err = fromCluster.VanClient.ConnectorCreateFromFile(ctx, secretFile, connectorCreateOpts)
+	log.Printf("SkupperConnect done")
 	return err
 
 }
