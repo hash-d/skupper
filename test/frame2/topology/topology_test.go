@@ -46,7 +46,7 @@ func TestTopologyMap(t *testing.T) {
 				Modify: &Topology{
 					TopologyMap: TopologyMap{
 						Name:           "topo",
-						TestRunnerBase: runner,
+						TestRunnerBase: &runner,
 						Map:            topoMap,
 					},
 					AutoTearDown: true,

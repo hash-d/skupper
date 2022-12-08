@@ -10,6 +10,7 @@ import (
 
 type TestRun struct {
 	Name      string
+	Doc       string
 	Setup     []Step
 	Teardown  []Step
 	MainSteps []Step

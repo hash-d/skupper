@@ -14,7 +14,7 @@ func TestHelloWorld(t *testing.T) {
 
 	topologyN := topology.N{
 		Name:           "hello-n",
-		TestRunnerBase: testRunnerBase,
+		TestRunnerBase: &testRunnerBase,
 	}
 
 	for i, topo := range []frame2.Executor{&topologyN} {

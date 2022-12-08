@@ -9,8 +9,10 @@ import (
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/frame2/environment"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/tester"
+	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/frame2/walk"
 	"github.com/skupperproject/skupper/test/utils/base"
@@ -20,31 +22,30 @@ func Test311(t *testing.T) {
 	var runner = &base.ClusterTestRunnerBase{}
 	var pub = runner.GetPublicContextPromise(1)
 	var prv = runner.GetPrivateContextPromise(1)
-	var prv2 = runner.GetPrivateContextPromise(2)
+	//	var prv2 = runner.GetPrivateContextPromise(2)
 	var retryAllow10 = frame2.RetryOptions{
-		Allow: 100,
+		Allow: 120,
+	}
+
+	topologyN := topology.N{
+		Name:           "test-311",
+		TestRunnerBase: runner,
+	}
+	err := topologyN.Execute()
+	if err != nil {
+		t.Fatalf("failed creating topology: %v", err)
 	}
 
 	var tests = frame2.TestRun{
 		Name: "Test311",
+		Doc: "Checks how routers going down impact network link status output.  " +
+			"It uses an N topology (pub1 <- prv1 -> pub2 <- prv2)",
 		Setup: []frame2.Step{
 			{
-				Modify: walk.SegmentSetup{
-					Namespace: prv,
+				Modify: environment.HelloWorld{
+					TopologyMap: *topologyN.Return,
 				},
-				// TODO Move all below to a 'setup hello world' kind of thing
-			}, {
-				Doc: "deploy Skupper on prv2",
-				Modify: execute.SkupperInstallSimple{
-					Namespace: prv2,
-				},
-			}, {
-				Doc: "connect prv to prv2",
-				Modify: execute.SkupperConnect{
-					Name: "third",
-					From: prv,
-					To:   prv2,
-				},
+				// Move the ones below as an option to HelloWorld
 			}, {
 				Doc: "Create frontend service",
 				Modify: execute.K8SServiceCreate{
@@ -128,7 +129,10 @@ func Test311(t *testing.T) {
 							},
 							Outgoing: []tester.CliLinkStatusOutgoing{
 								{
-									Name:   "public",
+									Name:   "private-test-311-1-to-public-test-311-1",
+									Active: true,
+								}, {
+									Name:   "private-test-311-1-to-public-test-311-2",
 									Active: true,
 								},
 							},
@@ -146,7 +150,7 @@ func Test311(t *testing.T) {
 							},
 							Incoming: []tester.CliLinkStatusIncoming{
 								{
-									SourceNamespace: "private-hello-world-1",
+									SourceNamespace: "private-test-311-1",
 									Active:          true,
 								},
 							},
@@ -189,7 +193,7 @@ func Test311(t *testing.T) {
 							},
 							Outgoing: []tester.CliLinkStatusOutgoing{
 								{
-									Name:   "public",
+									Name:   "private-test-311-1-to-public-test-311-1",
 									Active: false,
 								},
 							},
@@ -239,7 +243,11 @@ func Test311(t *testing.T) {
 							},
 							Outgoing: []tester.CliLinkStatusOutgoing{
 								{
-									Name:   "public",
+									Name:   "private-test-311-1-to-public-test-311-1",
+									Active: true,
+								},
+								{
+									Name:   "private-test-311-1-to-public-test-311-2",
 									Active: true,
 								},
 							},
@@ -258,7 +266,7 @@ func Test311(t *testing.T) {
 							},
 							Incoming: []tester.CliLinkStatusIncoming{
 								{
-									SourceNamespace: "private-hello-world-1",
+									SourceNamespace: "private-test-311-1",
 									Active:          true,
 								},
 							},

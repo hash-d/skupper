@@ -106,8 +106,10 @@ var tests = frame2.TestRun{
 	Runner: runner,
 	Setup: []frame2.Step{
 		{
-			Doc:    "Fail here, please",
-			Modify: execute.Fail{},
+			Doc: "Segment setup",
+			Modify: walk.SegmentSetup{
+				Namespace: pub,
+			},
 		}, {
 			Doc: "create frontend service",
 			Modify: execute.K8SServiceCreate{

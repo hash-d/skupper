@@ -15,7 +15,7 @@ import "github.com/skupperproject/skupper/test/utils/base"
 //
 type N struct {
 	Name           string
-	TestRunnerBase base.ClusterTestRunnerBase
+	TestRunnerBase *base.ClusterTestRunnerBase
 
 	Return *TopologyMap
 }

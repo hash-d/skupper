@@ -45,7 +45,6 @@ func (sc SkupperConnect) Execute() error {
 		r = *sc.RunnerBase
 	} else {
 		r := sc.From.Runner()
-		log.Printf("*")
 		if r == nil {
 			return errors.New("SkupperConnect: empty runner on the From cluster")
 		}

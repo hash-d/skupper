@@ -28,7 +28,7 @@ type TopologyItem struct {
 // get their output
 type TopologyMap struct {
 	Name           string
-	TestRunnerBase base.ClusterTestRunnerBase
+	TestRunnerBase *base.ClusterTestRunnerBase
 
 	// Input
 	Map []*TopologyItem
@@ -211,7 +211,7 @@ func (tc TopologyConnect) Execute() error {
 				Name:       connName,
 				From:       ctx.GetPromise(),
 				To:         pivot.GetPromise(),
-				RunnerBase: &tc.TopologyMap.TestRunnerBase,
+				RunnerBase: tc.TopologyMap.TestRunnerBase,
 			}.Execute()
 			if err != nil {
 				return fmt.Errorf("TopologyConnect failed: %w", err)
