@@ -2,6 +2,7 @@ package execute
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
@@ -13,6 +14,7 @@ type TestRunnerCreateNamespace struct {
 }
 
 func (trcn TestRunnerCreateNamespace) Execute() error {
+	log.Printf("TestRunnerCreateNamespace")
 	cluster, err := trcn.Namespace.Satisfy()
 	if err != nil {
 		return fmt.Errorf("TestRunnerCreateNamespace failed to create namespace from promise: %w", err)

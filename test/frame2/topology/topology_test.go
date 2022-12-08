@@ -14,17 +14,29 @@ func TestTopologyMap(t *testing.T) {
 	pub1 := &TopologyItem{
 		Type: Public,
 	}
+	pub2 := &TopologyItem{
+		Type: Public,
+	}
 
 	prv1 := &TopologyItem{
 		Type: Private,
 		Connections: []*TopologyItem{
 			pub1,
+			pub2,
+		},
+	}
+	prv2 := &TopologyItem{
+		Type: Private,
+		Connections: []*TopologyItem{
+			pub2,
 		},
 	}
 
 	topoMap := []*TopologyItem{
 		pub1,
+		pub2,
 		prv1,
+		prv2,
 	}
 
 	tests := frame2.TestRun{
