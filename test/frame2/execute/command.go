@@ -59,6 +59,11 @@ type Cmd struct {
 	FailReturn   []int         // Fail on any of these return status.  Default anything other than 0
 
 	*CmdResult
+
+	// TODO Dummy bool or string.  Develop the idea
+	// Instead of executing the command, it would only log it or show some message.
+	// This would be useful for test development (when the actual command is still not
+	// ready?)
 }
 
 type CmdResult struct {

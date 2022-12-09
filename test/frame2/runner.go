@@ -19,14 +19,15 @@ type TestRun struct {
 }
 
 func processStep(t *testing.T, step Step) error {
+	// TODO: replace [TR] with own logger with Prefix?
 	var err error
 	if step.Name != "" {
 		_ = t.Run(step.Name, func(t *testing.T) {
-			log.Printf("Doc: %v", step.Doc)
+			log.Printf("[TR] Doc: %v", step.Doc)
 			processErr := processStep_(t, step)
 			if processErr != nil {
 				// This make it easier to find the failures in log files
-				log.Printf("test %q failed", step.Name)
+				log.Printf("[TR] test %q failed", t.Name())
 				// For named tests, we do not return the error up; we
 				// just mark it as a failed test
 				t.Errorf("test failed: %v", processErr)
@@ -36,7 +37,7 @@ func processStep(t *testing.T, step Step) error {
 		//			err = fmt.Errorf("test failed: %v", err)
 		//		}
 	} else {
-		log.Printf("Running step doc %q", step.Doc)
+		log.Printf("[TR] Running step TBD# doc %q", step.Doc)
 		err = processStep_(t, step)
 	}
 	return err
@@ -44,11 +45,15 @@ func processStep(t *testing.T, step Step) error {
 }
 func processStep_(t *testing.T, step Step) error {
 	if step.Modify != nil {
+		log.Printf("[TR] Modifier %T", step.Modify)
 		err := step.Modify.Execute()
 		if err != nil {
 			return fmt.Errorf("modify step failed: %w", err)
 		}
 	}
+
+	// TODO here and elsewhere: join Substep and Substeps in a single
+	// list and use just one code.
 	if step.Substep != nil {
 		_, err := Retry{
 			Fn: func() error {
@@ -73,6 +78,7 @@ func processStep_(t *testing.T, step Step) error {
 
 	}
 	if step.Validator != nil {
+		log.Printf("[TR] Validator %T", step.Validator)
 		_, err := Retry{
 			Fn:      step.Validator.Validate,
 			Options: step.ValidatorRetry,
@@ -89,6 +95,7 @@ func processStep_(t *testing.T, step Step) error {
 		}
 	}
 	for _, v := range step.Validators {
+		log.Printf("[TR] Validator %T", v)
 		err := v.Validate()
 		if err != nil {
 			return err

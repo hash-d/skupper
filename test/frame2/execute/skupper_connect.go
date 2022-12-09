@@ -50,8 +50,6 @@ func (sc SkupperConnect) Execute() error {
 		}
 	}
 
-	log.Printf("*")
-
 	i := rand.Intn(1000)
 	// TODO redo this file name: use domain names, but keep the random thing
 	secretFile := "/tmp/" + r.Needs.NamespaceId + "_public_secret.yaml" + strconv.Itoa(i)

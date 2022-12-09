@@ -13,6 +13,24 @@ import "github.com/skupperproject/skupper/test/utils/base"
 //
 // Good for minimal multiple link testing
 //
+// TODO: change this topology, so that:
+//
+// - pub1 and prv1 have one link,
+// - pub2 and prv2 have one link
+//
+// It will be easier to think about then this way.  The
+// topology would then be:
+//
+//    pub2 pub1
+//     | \  |     ^
+//     |  \ |     |   Connection direction
+//    prv1 prv2
+//
+// Also, pub1 and prv1 will be on the ends of the topology, which
+// is the normal thing.
+//
+// TODO above
+//
 type N struct {
 	Name           string
 	TestRunnerBase *base.ClusterTestRunnerBase
