@@ -133,7 +133,7 @@ func Test311(t *testing.T) {
 		public2Ok,
 	}
 
-	var tests = frame2.TestRun{
+	var tests = frame2.Phase{
 		Name: "Test311",
 		Doc: "Checks how routers going down impact network link status output.  " +
 			"It uses an N topology (pub1 <- prv1 -> pub2 <- prv2)",
@@ -595,6 +595,6 @@ func Test311(t *testing.T) {
 		},
 	}
 
-	tests.Run(t)
+	tests.RunT(t)
 
 }

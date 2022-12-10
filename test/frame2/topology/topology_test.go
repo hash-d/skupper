@@ -39,7 +39,7 @@ func TestTopologyMap(t *testing.T) {
 		prv2,
 	}
 
-	tests := frame2.TestRun{
+	tests := frame2.Phase{
 		Name: "TestTopology",
 		Setup: []frame2.Step{
 			{
@@ -63,5 +63,5 @@ func TestTopologyMap(t *testing.T) {
 		},
 	}
 
-	tests.Run(t)
+	tests.RunT(t)
 }

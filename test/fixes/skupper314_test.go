@@ -17,7 +17,7 @@ import (
 )
 
 func TestSkupper314(t *testing.T) {
-	assert.Assert(t, tests.Run(t))
+	assert.Assert(t, tests.RunT(t))
 }
 
 var runner = &base.ClusterTestRunnerBase{}
@@ -101,9 +101,9 @@ var prvFrontWorks = frame2.Step{
 	},
 }
 
-var tests = frame2.TestRun{
-	Name:   "test-314",
-	Runner: runner,
+var tests = frame2.Phase{
+	Name:       "test-314",
+	BaseRunner: runner,
 	Setup: []frame2.Step{
 		{
 			Doc: "Segment setup",

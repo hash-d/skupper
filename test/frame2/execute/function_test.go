@@ -9,7 +9,7 @@ import (
 )
 
 func TestFunction(t *testing.T) {
-	tests := frame2.TestRun{
+	tests := frame2.Phase{
 		Name: "TestFunction",
 		MainSteps: []frame2.Step{
 			{
@@ -30,5 +30,5 @@ func TestFunction(t *testing.T) {
 			},
 		},
 	}
-	tests.Run(t)
+	tests.RunT(t)
 }

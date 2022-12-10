@@ -24,7 +24,7 @@ func TestHelloWorld(t *testing.T) {
 		}
 	}
 
-	tests := frame2.TestRun{
+	tests := frame2.Phase{
 		Name: "TestHelloWorld",
 		Setup: []frame2.Step{
 			{
@@ -35,6 +35,6 @@ func TestHelloWorld(t *testing.T) {
 		},
 	}
 
-	tests.Run(t)
+	tests.RunT(t)
 
 }

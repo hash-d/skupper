@@ -23,7 +23,7 @@ var doneCtx, _ = context.WithTimeout(context.Background(), time.Microsecond)
 var resultCommunication = CmdResult{}
 
 func TestCmd(t *testing.T) {
-	tests.Run(t)
+	tests.RunT(t)
 }
 
 type cmdValidator struct {
@@ -98,7 +98,7 @@ func (ct cmdValidator) Validate() error {
 	return nil
 }
 
-var tests = frame2.TestRun{
+var tests = frame2.Phase{
 	Name: "test-command",
 	MainSteps: []frame2.Step{
 		{
