@@ -69,5 +69,5 @@ type Executor interface {
 }
 
 type TearDowner interface {
-	TearDown() Executor
+	Teardown() Executor
 }

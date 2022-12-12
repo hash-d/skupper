@@ -157,6 +157,7 @@ func (p *Phase) run() error {
 	if runner == nil {
 		p.Runner = &Run{}
 		p.savedRunner = p.Runner
+		runner = p.Runner
 	}
 
 	// The Runner is public; we do not want people messing with it in the middle
@@ -180,9 +181,13 @@ func (p *Phase) run() error {
 		p.previousRun = true
 	}
 
-	if t != nil && p.Name == "" {
-		t.Fatal("test name must be defined")
+	if t != nil {
+		t.Cleanup(p.teardown)
 	}
+
+	//	if t != nil && p.Name == "" {
+	//		t.Fatal("test name must be defined")
+	//	}
 
 	if t != nil && p.BaseRunner == nil {
 		p.BaseRunner = &base.ClusterTestRunnerBase{}
@@ -193,11 +198,16 @@ func (p *Phase) run() error {
 	if len(p.Setup) > 0 {
 		log.Printf("Starting setup")
 		for _, step := range p.Setup {
-			//		if step.Modify != nil {
-			//			if step, ok := step.Modify.(TearDowner); ok {
-			//				tr.teardowns = append(tr.teardowns, step.TearDown())
-			//			}
-			//		}
+			if step.Modify != nil {
+				if downerStep, ok := step.Modify.(TearDowner); ok {
+					tdFunction := downerStep.Teardown()
+
+					if tdFunction != nil {
+						log.Printf("[R] Installed auto-teardown for %T", step.Modify)
+						p.teardowns = append(p.teardowns, downerStep.Teardown())
+					}
+				}
+			}
 			if err := processStep(t, step); err != nil {
 				if t != nil {
 					t.Errorf("setup failed: %v", err)
@@ -206,14 +216,15 @@ func (p *Phase) run() error {
 			}
 		}
 	}
-	var savedError error
+
+	var savedErr error
 	if len(p.MainSteps) > 0 {
 		log.Printf("Starting main steps")
 		for _, step := range p.MainSteps {
 			if err := processStep(t, step); err != nil {
 				if t != nil {
 					t.Errorf("test failed: %v", err)
-					savedError = err
+					savedErr = err
 				}
 				// TODO this should be pluggable
 				//p.BaseRunner.DumpTestInfo(p.Name)
@@ -222,22 +233,27 @@ func (p *Phase) run() error {
 		}
 	}
 
-	if len(p.teardowns) > 0 {
-		// TODO move this to t.Cleanup and make it depend on t != nil?
-		log.Printf("Starting auto-teardown")
-		for _, td := range p.teardowns {
-			if err := td.Execute(); err != nil {
-				if t != nil {
-					t.Errorf("auto-teardown failed: %v", err)
-				}
-				// We do not return here; we keep going doing whatever
-				// teardown we can
-			}
-		}
+	if t == nil {
+		// If we're not running under testing.T's supervision, we need to run
+		// the teardown ourselves.
+
+		log.Println("Entering teardown phase")
+		log.Printf("Auto tear downs: %#v", p.teardowns)
+		p.teardown()
 	}
+	return savedErr
+}
+
+// TODO: thought for later.  Could a user control the order of individual teardowns (automatic
+// and explicit) by using different phases?
+func (p *Phase) teardown() {
+	t := p.Runner.T
+	// TODO: if both p.Teardown and p.teardowns were the same interface, this could be
+	// a single loop.  Or: leave the individual tear downs to t.Cleanup
 
 	if len(p.Teardown) > 0 {
 		log.Printf("Starting teardown")
+		// This one runs in normal order, since the user listed them themselves
 		for i, step := range p.Teardown {
 			if err := processStep(t, step); err != nil {
 				if t == nil {
@@ -249,5 +265,21 @@ func (p *Phase) run() error {
 			}
 		}
 	}
-	return savedError
+
+	if len(p.teardowns) > 0 {
+		// TODO move this to t.Cleanup and make it depend on t != nil?
+		// This one runs in reverse order, since they were added by the setup steps
+		log.Printf("Starting auto-teardown")
+		for i := len(p.teardowns) - 1; i >= 0; i-- {
+			td := p.teardowns[i]
+			log.Printf("%T", td)
+			if err := td.Execute(); err != nil {
+				if t != nil {
+					t.Errorf("auto-teardown failed: %v", err)
+				}
+				// We do not return here; we keep going doing whatever
+				// teardown we can
+			}
+		}
+	}
 }

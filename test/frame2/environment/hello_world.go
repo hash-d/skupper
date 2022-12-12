@@ -1,9 +1,7 @@
 package environment
 
 import (
-	"fmt"
-	"log"
-
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
 	"github.com/skupperproject/skupper/test/frame2/topology"
 )
@@ -27,28 +25,30 @@ type HelloWorldN struct {
 //   whatever topology the current test is asking for, if
 //   possible
 //
+// To use the auto tearDown, make sure to populate the Runner
 type HelloWorld struct {
-	TopologyMap topology.TopologyMap
+	Runner      *frame2.Run // Required for autoTeardown and step logging
+	TopologyMap *topology.TopologyMap
 }
 
 func (hw HelloWorld) Execute() error {
-	log.Printf("environment.HelloWorld")
-	log.Printf("create topology")
 	topo := topology.Topology{
-		TopologyMap: hw.TopologyMap,
-	}
-	err := topo.Execute()
-	if err != nil {
-		return fmt.Errorf("HelloWorld failed to create topology: %w", err)
+		Runner:       hw.Runner,
+		TopologyMap:  hw.TopologyMap,
+		AutoTearDown: true,
 	}
 
-	deployHW := deploy.HelloWorld{
-		Topology: topo,
+	execute := frame2.Phase{
+		Runner: hw.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: &topo,
+			}, {
+				Modify: deploy.HelloWorld{
+					Topology: topo,
+				},
+			},
+		},
 	}
-	err = deployHW.Execute()
-	if err != nil {
-		return fmt.Errorf("HelloWorld failed deployment: %w", err)
-	}
-	log.Printf("TODO deploy app")
-	return nil
+	return execute.Run()
 }

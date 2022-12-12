@@ -6,6 +6,7 @@ package frame2_test
 import (
 	"fmt"
 	"io"
+	"log"
 	"testing"
 	"time"
 
@@ -256,4 +257,34 @@ func (c Composed) Execute() error {
 	}
 	compoPhase2.Run()
 	return nil
+}
+
+type AutoDestruct struct {
+}
+
+func (a AutoDestruct) Execute() error {
+	log.Println("Autodestruct active")
+	return nil
+}
+
+func (a AutoDestruct) TearDown() frame2.Executor {
+	return execute.Print{
+		Message: "Destroyed!",
+	}
+}
+
+func TestAutoTearDown(t *testing.T) {
+	runner := frame2.Run{T: t}
+
+	test := frame2.Phase{
+		Name:   "Phase1",
+		Runner: &runner,
+		Setup: []frame2.Step{
+			{
+				Modify: AutoDestruct{},
+			},
+		},
+	}
+	test.Run()
+
 }

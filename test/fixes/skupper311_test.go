@@ -133,14 +133,18 @@ func Test311(t *testing.T) {
 		public2Ok,
 	}
 
+	var f2runner = &frame2.Run{T: t}
+
 	var tests = frame2.Phase{
-		Name: "Test311",
+		Runner: f2runner,
+		Name:   "Test311",
 		Doc: "Checks how routers going down impact network link status output.  " +
 			"It uses an N topology (pub1 <- prv1 -> pub2 <- prv2)",
 		Setup: []frame2.Step{
 			{
 				Modify: environment.HelloWorld{
-					TopologyMap: *topologyN.Return,
+					TopologyMap: topologyN.Return,
+					Runner:      f2runner,
 				},
 				// Move the ones below as an option to HelloWorld
 			}, {
@@ -595,6 +599,6 @@ func Test311(t *testing.T) {
 		},
 	}
 
-	tests.RunT(t)
+	tests.Run()
 
 }

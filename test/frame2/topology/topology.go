@@ -34,10 +34,10 @@ type TopologyMap struct {
 	Map []*TopologyItem
 
 	// Output
-	Private []base.ClusterContext
-	Public  []base.ClusterContext
+	Private []*base.ClusterContext
+	Public  []*base.ClusterContext
 
-	GeneratedMap map[*TopologyItem]base.ClusterContext
+	GeneratedMap map[*TopologyItem]*base.ClusterContext
 }
 
 // Validate: check for duplicates, disconnected items, etc (but allow to skip validation)
@@ -82,7 +82,7 @@ func (tm *TopologyMap) Execute() error {
 		return fmt.Errorf("TopologyMap: failed building the contexts: %w", err)
 	}
 
-	tm.GeneratedMap = map[*TopologyItem]base.ClusterContext{}
+	tm.GeneratedMap = map[*TopologyItem]*base.ClusterContext{}
 
 	countPrivate = 0
 	countPublic = 0
@@ -95,16 +95,16 @@ func (tm *TopologyMap) Execute() error {
 			if err != nil {
 				return fmt.Errorf("TopologyMap failed to get public context %d: %w", countPublic, err)
 			}
-			tm.Public = append(tm.Public, *newContext)
-			tm.GeneratedMap[item] = *newContext
+			tm.Public = append(tm.Public, newContext)
+			tm.GeneratedMap[item] = newContext
 		case Private:
 			countPrivate++
 			newContext, err := tm.TestRunnerBase.GetPrivateContext(countPrivate)
 			if err != nil {
 				return fmt.Errorf("TopologyMap failed to get public context %d: %w", countPrivate, err)
 			}
-			tm.Private = append(tm.Private, *newContext)
-			tm.GeneratedMap[item] = *newContext
+			tm.Private = append(tm.Private, newContext)
+			tm.GeneratedMap[item] = newContext
 		default:
 			return errors.New("TopologyMap: Only Public and Private implemented")
 		}
@@ -127,50 +127,59 @@ func (tv TopologyValidator) Execute() error {
 // This ties together TopologyMap, TopologyConnect
 // and other items
 type Topology struct {
-	TopologyMap  TopologyMap
+	Runner       *frame2.Run
+	TopologyMap  *TopologyMap
 	AutoTearDown bool
 
 	teardowns []frame2.Executor
 }
 
 func (t *Topology) Execute() error {
-	log.Printf("topology.Topology")
-
-	log.Printf("Executing TopologyMap")
-	err := t.TopologyMap.Execute()
-	if err != nil {
-		return err
+	steps := frame2.Phase{
+		Runner: t.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: t.TopologyMap,
+			},
+		},
 	}
+	steps.Execute()
 
 	log.Printf("Creating namespaces and installing Skupper")
+
 	for _, context := range append(t.TopologyMap.Private, t.TopologyMap.Public...) {
 		cc := context.GetPromise()
-		trcn := execute.TestRunnerCreateNamespace{
-			Namespace:    *cc,
-			AutoTearDown: t.AutoTearDown,
-		}
-		err := trcn.Execute()
-		if err != nil {
-			return fmt.Errorf("Topology failed creating namespace %q: %v", context.Namespace, err)
-		}
-		t.teardowns = append(t.teardowns, trcn.Teardown())
 
-		// Change this by option?
-		err = execute.SkupperInstallSimple{
-			Namespace: cc,
-		}.Execute()
-		if err != nil {
-			return fmt.Errorf("Topology failed to install Skupper on %q: %w", context.Namespace, err)
+		createAndInstall := frame2.Phase{
+			Runner: t.Runner,
+			Setup: []frame2.Step{
+				{
+					Modify: execute.TestRunnerCreateNamespace{
+						Namespace:    *cc,
+						AutoTearDown: t.AutoTearDown,
+					},
+				}, {
+					Modify: execute.SkupperInstallSimple{
+						Namespace: cc,
+					},
+				},
+			},
 		}
+		createAndInstall.Execute()
+
 	}
 
-	log.Printf("Connecting topology")
-	err = TopologyConnect{
-		TopologyMap: t.TopologyMap,
-	}.Execute()
-	if err != nil {
-		return fmt.Errorf("Topology failed to connect: %w", err)
+	connectSteps := frame2.Phase{
+		Runner: t.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: TopologyConnect{
+					TopologyMap: *t.TopologyMap,
+				},
+			},
+		},
 	}
+	connectSteps.Execute()
 
 	return nil
 }
