@@ -2,6 +2,44 @@ package topology
 
 import "github.com/skupperproject/skupper/test/utils/base"
 
+// TODO: perhaps this file should move to individual files under a new
+// topologies directory, so it's more clear what's on a list of
+// topologies, and what's the infra to build them.
+
+// It's the simplest Skupper topology you can get: prv1 connects
+// to pub1.  That's it.
+type Simplest struct {
+	Name           string
+	TestRunnerBase *base.ClusterTestRunnerBase
+
+	Return *TopologyMap
+}
+
+func (n *Simplest) Execute() error {
+
+	pub1 := &TopologyItem{
+		Type: Public,
+	}
+	prv1 := &TopologyItem{
+		Type: Private,
+		Connections: []*TopologyItem{
+			pub1,
+		},
+	}
+	topoMap := []*TopologyItem{
+		pub1,
+		prv1,
+	}
+
+	n.Return = &TopologyMap{
+		Name:           n.Name,
+		TestRunnerBase: n.TestRunnerBase,
+		Map:            topoMap,
+	}
+
+	return nil
+}
+
 // Two pub, two private.  Connections always from prv to pub
 //
 // prv1 has two outgoing links; pub2 has two incoming links

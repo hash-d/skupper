@@ -254,6 +254,14 @@ type ClusterContextPromise struct {
 // A successful run caches the ClusterContext for future calls
 // (which will then never fail)
 func (c *ClusterContextPromise) Satisfy() (*ClusterContext, error) {
+	if c == nil {
+		// to panic or not to panic?
+		//
+		// For development time, it's probably better to panic and get a proper
+		// stack trace (TODO can it be added here?); on test time, it's better not
+		// to panic, let the test fail and continue to the next test.
+		return nil, fmt.Errorf("Satisfy() executed on a nil instance")
+	}
 	if c.dummy {
 		return nil, fmt.Errorf("This is a dummy ClusterContextPromise")
 	}
