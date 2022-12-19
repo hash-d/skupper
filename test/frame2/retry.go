@@ -49,13 +49,13 @@ type RetryOptions struct {
 	Min int // TODO Run as normal, but delay report until that number of tries have been done
 	// This can be used to generate stats from the results
 
-	KeepTrying bool             // TODO Ignores Retries; keep trying until Ensure is met.  Ctx must be set
-	Ctx        *context.Context // TODO: stop on context
-	Timeout    time.Duration    // Wrapps, updated Ctx, so others can be use it
+	KeepTrying bool
+	Ctx        context.Context
+	Timeout    time.Duration // TODO Wrapps, updated Ctx, so others can be use it
 }
 
 func (r Retry) Run() ([]error, error) {
-	interval := time.Duration(r.Options.Interval)
+	interval := r.Options.Interval
 	if interval == 0 {
 		interval = time.Second
 	}
@@ -75,9 +75,19 @@ func (r Retry) Run() ([]error, error) {
 	if ensure < 1 {
 		ensure = 1
 	}
+	ctx := r.Options.Ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	for {
+		// Before any tries, check the context
+		err := ctx.Err()
+		if err != nil {
+			return results, err
+		}
+
 		totalTries++
-		err := r.Fn()
+		err = r.Fn()
 		results = append(results, err)
 		if err == nil {
 			// Are we counting this as a success?
@@ -97,16 +107,19 @@ func (r Retry) Run() ([]error, error) {
 					totalTries, consecutiveSuccess, ignoredSuccess,
 				)
 			}
+			<-tick.C
 			continue
 		}
-		// This try failed, and we ran out of retries.  Note retries only count after Allow expires
-		if totalTries > r.Options.Allow && retries >= r.Options.Retries {
-			if r.Options.Retries > 1 {
-				return results, fmt.Errorf("max retry attempts reached: %w", err)
-			} else {
-				return results, err
-			}
+		if !r.Options.KeepTrying {
+			// This try failed, and we ran out of retries.  Note retries only count after Allow expires
+			if totalTries > r.Options.Allow && retries >= r.Options.Retries {
+				if r.Options.Retries > 1 {
+					return results, fmt.Errorf("max retry attempts reached: %w", err)
+				} else {
+					return results, err
+				}
 
+			}
 		}
 		consecutiveSuccess = 0
 		ignoredSuccess = 0

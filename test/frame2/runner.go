@@ -1,6 +1,7 @@
 package frame2
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 type Run struct {
 	T      *testing.T
+	Doc    string // TODO this is currently unused (ie, it's not printed)
 	savedT *testing.T
 }
 
@@ -86,27 +88,36 @@ func processStep_(t *testing.T, step Step) error {
 		}
 
 	}
+
+	validatorList := step.Validators
 	if step.Validator != nil {
-		log.Printf("[TR] Validator %T", step.Validator)
-		_, err := Retry{
-			Fn:      step.Validator.Validate,
-			Options: step.ValidatorRetry,
-		}.Run()
+		validatorList = append([]Validator{step.Validator}, validatorList...)
+	}
+
+	for _, v := range validatorList {
+		log.Printf("[R] Validator %T", v)
+
+		fn := v.Validate
 		if step.ExpectError {
-			if err == nil {
-				return fmt.Errorf("Error expected but not realised")
-			} else {
-				return nil
+			fn = func() error {
+				err := v.Validate()
+				if err == nil {
+					return fmt.Errorf("Error expected but not realised")
+				} else {
+					return nil
+				}
+
 			}
 		}
+
+		log.Printf("Step: %#v", step)
+		_, err := Retry{
+			Fn:      fn,
+			Options: step.ValidatorRetry,
+		}.Run()
+
 		if err != nil {
-			return err
-		}
-	}
-	for _, v := range step.Validators {
-		log.Printf("[TR] Validator %T", v)
-		err := v.Validate()
-		if err != nil {
+			log.Printf("[R] Validator %T failed: %v", v, err)
 			return err
 		}
 	}
@@ -137,11 +148,24 @@ func (p Phase) Execute() error {
 }
 
 func (p *Phase) Run() error {
-	err := p.run()
+	var err error
+
+	// If a named phase, and within a *testing.T, create a subtest
+	if p.Name != "" && p.Runner.T != nil {
+		ok := p.Runner.T.Run(p.Name, func(t *testing.T) {
+			p.Runner = &Run{T: t}
+			err = p.run()
+		})
+		if !ok && err != nil {
+			err = errors.New("test returned not-ok, but no errors")
+		}
+	} else {
+		// otherwise, just run it
+		err = p.run()
+	}
+
 	if err != nil {
-		if p.Runner.T != nil {
-			p.Runner.T.Fatalf("Phase error: %v", err)
-		} else {
+		if p.Runner.T == nil {
 			log.Printf("Phase error: %v", err)
 		}
 	}
@@ -219,7 +243,7 @@ func (p *Phase) run() error {
 
 	var savedErr error
 	if len(p.MainSteps) > 0 {
-		log.Printf("Starting main steps")
+		// log.Printf("Starting main steps")
 		for _, step := range p.MainSteps {
 			if err := processStep(t, step); err != nil {
 				if t != nil {
@@ -237,8 +261,8 @@ func (p *Phase) run() error {
 		// If we're not running under testing.T's supervision, we need to run
 		// the teardown ourselves.
 
-		log.Println("Entering teardown phase")
-		log.Printf("Auto tear downs: %#v", p.teardowns)
+		// log.Println("Entering teardown phase")
+		// log.Printf("Auto tear downs: %#v", p.teardowns)
 		p.teardown()
 	}
 	return savedErr
@@ -258,6 +282,7 @@ func (p *Phase) teardown() {
 			if err := processStep(t, step); err != nil {
 				if t == nil {
 					log.Printf("Tear down step %d failed: %v", i, err)
+				} else {
 					t.Errorf("teardown failed: %v", err)
 				}
 				// We do not return here; we keep going doing whatever
@@ -272,9 +297,11 @@ func (p *Phase) teardown() {
 		log.Printf("Starting auto-teardown")
 		for i := len(p.teardowns) - 1; i >= 0; i-- {
 			td := p.teardowns[i]
-			log.Printf("%T", td)
+			log.Printf("[R] Teardown: %T", td)
 			if err := td.Execute(); err != nil {
-				if t != nil {
+				if t == nil {
+					log.Printf("auto-teardown failed: %v", err)
+				} else {
 					t.Errorf("auto-teardown failed: %v", err)
 				}
 				// We do not return here; we keep going doing whatever

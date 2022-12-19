@@ -1,11 +1,15 @@
 package execute
 
 import (
+	"context"
 	"fmt"
+	"time"
 
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/k8s"
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // This simply makes a request to k8s.NewDeployment
@@ -15,8 +19,12 @@ type K8SDeploymentOpts struct {
 	Name           string
 	Namespace      *base.ClusterContextPromise
 	DeploymentOpts k8s.DeploymentOpts
+	Wait           time.Duration
+	Runner         *frame2.Run
 
-	Result *v1.Deployment
+	Ctx context.Context
+
+	Result *appsv1.Deployment
 }
 
 func (d *K8SDeploymentOpts) Execute() error {
@@ -36,6 +44,33 @@ func (d *K8SDeploymentOpts) Execute() error {
 		return fmt.Errorf("Failed to create deployment: %w", err)
 	}
 
+	if d.Wait > 0 {
+		ctx := d.Ctx
+		var fn context.CancelFunc
+		if ctx == nil {
+			ctx, fn = context.WithTimeout(context.Background(), d.Wait)
+			defer fn()
+		}
+
+		phase := frame2.Phase{
+			Runner: d.Runner,
+			MainSteps: []frame2.Step{
+				{
+					Validator: K8SDeploymentGet{
+						Runner:    d.Runner,
+						Namespace: d.Namespace,
+						Name:      d.Name,
+					},
+					ValidatorRetry: frame2.RetryOptions{
+						Ctx:        ctx,
+						KeepTrying: true,
+					},
+				},
+			},
+		}
+		return phase.Run()
+	}
+
 	return nil
 }
 
@@ -48,9 +83,9 @@ func (d *K8SDeploymentOpts) Execute() error {
 //
 type K8SDeployment struct {
 	Namespace  *base.ClusterContextPromise
-	Deployment *v1.Deployment
+	Deployment *appsv1.Deployment
 
-	Result *v1.Deployment
+	Result *appsv1.Deployment
 }
 
 func (d *K8SDeployment) Execute() error {
@@ -62,6 +97,32 @@ func (d *K8SDeployment) Execute() error {
 	d.Result, err = cc.VanClient.KubeClient.AppsV1().Deployments(cc.Namespace).Create(d.Deployment)
 	if err != nil {
 		return fmt.Errorf("Failed to create deployment: %w", err)
+	}
+
+	return nil
+}
+
+type K8SDeploymentGet struct {
+	Runner    *frame2.Run
+	Namespace *base.ClusterContextPromise
+	Name      string
+
+	Result *appsv1.Deployment
+}
+
+func (kdg K8SDeploymentGet) Validate() error {
+	cc, err := kdg.Namespace.Satisfy()
+	if err != nil {
+		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
+	}
+
+	kdg.Result, err = cc.VanClient.KubeClient.AppsV1().Deployments(cc.Namespace).Get(kdg.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to get deployment %q: %w", kdg.Name, err)
+	}
+
+	if kdg.Result.Status.ReadyReplicas < 1 {
+		return fmt.Errorf("Deployment %q has no ready replicas", kdg.Name)
 	}
 
 	return nil

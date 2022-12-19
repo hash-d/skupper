@@ -7,6 +7,7 @@ import (
 	"github.com/skupperproject/skupper/test/utils/skupper/cli"
 )
 
+// This is a wrapper to the types available on test/utils/skupper/cli/
 type CliTester struct {
 	Tester  cli.SkupperCommandTester
 	Cluster base.ClusterContextPromise

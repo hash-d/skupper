@@ -92,7 +92,7 @@ func containsInt(needle int, haystack []int) bool {
 
 }
 
-func (c Cmd) Execute() error {
+func (c *Cmd) Execute() error {
 	// We only create if it was not sent by the client
 	if c.CmdResult == nil {
 		c.CmdResult = &CmdResult{}

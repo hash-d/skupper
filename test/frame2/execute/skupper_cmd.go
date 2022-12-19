@@ -45,7 +45,8 @@ func (cs *CliSkupper) Execute() error {
 
 	err := cmd.Execute()
 	if err != nil {
-		return fmt.Errorf("execute.CliSkupper %w", err)
+		log.Printf("CmdResult: %#v", cmd.CmdResult)
+		return fmt.Errorf("execute.CliSkupper: %w", err)
 	}
 	return nil
 }

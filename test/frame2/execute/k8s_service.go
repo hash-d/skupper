@@ -4,7 +4,6 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Creates a Kubernetes service, with simplified configurations
@@ -15,6 +14,11 @@ type K8SServiceCreate struct {
 	Labels      map[string]string
 	Selector    map[string]string
 	Ports       []int32
+	Type        apiv1.ServiceType
+
+	// Cluster IP; set this to "None" and Type to ClusterIP for a headless service
+	// https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
+	ClusterIP string
 }
 
 //func CreateService(cluster *client.VanClient, name string, annotations, labels, selector map[string]string, ports []apiv1.ServicePort) (*apiv1.Service, error) {
@@ -32,9 +36,10 @@ func (ks K8SServiceCreate) Execute() error {
 			Annotations: ks.Annotations,
 		},
 		Spec: apiv1.ServiceSpec{
-			Ports:    ports,
-			Selector: ks.Selector,
-			Type:     apiv1.ServiceTypeLoadBalancer,
+			Ports:     ports,
+			Selector:  ks.Selector,
+			Type:      ks.Type,
+			ClusterIP: ks.ClusterIP,
 		},
 	}
 
@@ -61,7 +66,7 @@ func (ksa K8SServiceAnnotate) Execute() error {
 		return err
 	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksa.Name, v1.GetOptions{})
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksa.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -90,7 +95,7 @@ func (ksr K8SServiceRemoveAnnotation) Execute() error {
 		return err
 	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksr.Name, v1.GetOptions{})
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksr.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -107,4 +112,22 @@ func (ksr K8SServiceRemoveAnnotation) Execute() error {
 	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(svc)
 	return err
 
+}
+
+// Retrieve a K8S Service by name and namespace
+type K8SServiceGet struct {
+	Namespace *base.ClusterContextPromise
+	Name      string
+
+	// Return
+	Service *apiv1.Service
+}
+
+func (kg *K8SServiceGet) Validate() error {
+	cluster, err := kg.Namespace.Satisfy()
+	kg.Service, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(kg.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }

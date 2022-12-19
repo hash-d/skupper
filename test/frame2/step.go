@@ -28,7 +28,10 @@ type Step struct {
 	SubstepRetry   RetryOptions
 	// A simple way to invert the meaning of the Validator.  Validators
 	// are encouraged to provide more specific negative testing behaviors,
-	// but this serves for simpler testing
+	// but this serves for simpler testing.  If set, it inverts the
+	// response from the call sent to Retry, so it can be used to wait
+	// until an error is returned (but there is no control on which kind
+	// of error that will be)
 	ExpectError bool
 }
 
