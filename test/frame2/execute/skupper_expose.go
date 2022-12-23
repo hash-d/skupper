@@ -21,6 +21,8 @@ type SkupperExpose struct {
 
 	// TODO.  Change this into some constants, so it can be reused and translated by different backing
 	//        implementations.
+	// A string that will compile into a Regex, which matches the command stderr to define an
+	// expected failure.
 	FailureReason string
 
 	Runner *frame2.Run

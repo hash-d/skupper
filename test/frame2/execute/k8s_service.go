@@ -1,6 +1,11 @@
 package execute
 
 import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +24,9 @@ type K8SServiceCreate struct {
 	// Cluster IP; set this to "None" and Type to ClusterIP for a headless service
 	// https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
 	ClusterIP string
+
+	AutoTeardown bool
+	Wait         time.Duration
 }
 
 //func CreateService(cluster *client.VanClient, name string, annotations, labels, selector map[string]string, ports []apiv1.ServicePort) (*apiv1.Service, error) {
@@ -44,13 +52,55 @@ func (ks K8SServiceCreate) Execute() error {
 	}
 
 	// Creating the new service
-
-	//	cluster := ks.Namespace.VanClient
 	cluster, err := ks.Namespace.Satisfy()
 	svc, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Create(svc)
 	if err != nil {
 		return err
 	}
+	if ks.Wait > 0 {
+		log.Printf("Waiting up to %v until service %q exists", ks.Wait, ks.Name)
+		_, err := frame2.Retry{
+			Options: frame2.RetryOptions{
+				KeepTrying: true,
+				Timeout:    ks.Wait,
+			},
+			Fn: func() error {
+				_, retryErr := cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(ks.Name, metav1.GetOptions{})
+				return retryErr
+			},
+		}.Run()
+
+		return err
+	}
+	return nil
+}
+
+func (ks K8SServiceCreate) Teardown() frame2.Executor {
+
+	if !ks.AutoTeardown {
+		return nil
+
+	}
+
+	return K8SServiceDelete{
+		Namespace: ks.Namespace,
+		Name:      ks.Name,
+	}
+}
+
+type K8SServiceDelete struct {
+	Namespace *base.ClusterContextPromise
+	Name      string
+}
+
+func (ksd K8SServiceDelete) Execute() error {
+	cc, err := ksd.Namespace.Satisfy()
+	if err != nil {
+		return fmt.Errorf("Failed to satisfy namespace promise: %w", err)
+	}
+
+	cc.VanClient.KubeClient.CoreV1().Services(cc.Namespace).Delete(ksd.Name, &metav1.DeleteOptions{})
+
 	return nil
 }
 

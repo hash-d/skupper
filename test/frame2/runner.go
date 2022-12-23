@@ -110,7 +110,6 @@ func processStep_(t *testing.T, step Step) error {
 			}
 		}
 
-		log.Printf("Step: %#v", step)
 		_, err := Retry{
 			Fn:      fn,
 			Options: step.ValidatorRetry,
@@ -246,9 +245,9 @@ func (p *Phase) run() error {
 		// log.Printf("Starting main steps")
 		for _, step := range p.MainSteps {
 			if err := processStep(t, step); err != nil {
+				savedErr = err
 				if t != nil {
 					t.Errorf("test failed: %v", err)
-					savedErr = err
 				}
 				// TODO this should be pluggable
 				//p.BaseRunner.DumpTestInfo(p.Name)

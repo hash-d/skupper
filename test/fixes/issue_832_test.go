@@ -105,6 +105,7 @@ func TestIssue832(t *testing.T) {
 	}
 	phase2.Run()
 
+	// Install dnsutils so we can check the published names
 	for _, target := range []*base.ClusterContextPromise{prvPromise, pubPromise} {
 		// TODO move this to a Executor "DeployDNStools
 		deployDnsTooling := frame2.Phase{
@@ -137,7 +138,7 @@ func TestIssue832(t *testing.T) {
 
 	prepareBaseSf := frame2.Phase{
 		Runner: runner,
-		Doc:    "Create a base statefulset, that's going to be modified for each test, it deploys a hello-world-backend with a ReadinessProbe configured to start after 60 seconds",
+		Doc:    "Create a base statefulset, that's going to be modified for each test; it deploys a hello-world-backend with a ReadinessProbe configured to start after 60 seconds",
 		Setup: []frame2.Step{
 			{
 				Modify: execute.Function{
@@ -171,7 +172,7 @@ func TestIssue832(t *testing.T) {
 												Ports: []core.ContainerPort{
 													{
 														HostPort:      8080,
-														ContainerPort: 80,
+														ContainerPort: 8080,
 													},
 												},
 												ReadinessProbe: &core.Probe{
@@ -179,7 +180,7 @@ func TestIssue832(t *testing.T) {
 													Handler: core.Handler{
 														HTTPGet: &core.HTTPGetAction{
 															Path: "/api/hello",
-															Port: intstr.FromInt(80),
+															Port: intstr.FromInt(8080),
 														},
 													},
 												},
@@ -198,10 +199,86 @@ func TestIssue832(t *testing.T) {
 	}
 	prepareBaseSf.Run()
 
+	control := frame2.Phase{
+		Runner: runner,
+		Name:   "control-group",
+		Doc: `This is the 'control group'; a normal service backing the statefulset, which is exposed by
+			Skupper without publishNotReadyAdress; the name is supposed to not appear before the statefulset
+			reports as ready`,
+		Setup: []frame2.Step{
+			{
+				Doc: "Create a headless k8s service for the statefulset",
+				Modify: execute.K8SServiceCreate{
+					Namespace:    prvPromise,
+					Name:         "backend",
+					Ports:        []int32{8080},
+					Labels:       labels,
+					Selector:     labels,
+					ClusterIP:    "None",
+					Type:         core.ServiceTypeClusterIP,
+					AutoTeardown: true,
+					Wait:         time.Minute,
+				},
+			}, {
+				Doc: "Deploy a hello-world-backend server, with a readiness probe delayed to start only after 60 seconds",
+				Modify: &execute.K8SStatefulSet{
+					Namespace:    prvPromise,
+					AutoTeardown: true,
+					StatefulSet:  &baseSf,
+				},
+			}, {
+				Doc: "Expose the stateful set; expect the name to not be available for at least 30s",
+				Modify: execute.SkupperExpose{
+					Runner:                 runner,
+					Namespace:              prvPromise,
+					Name:                   "backend",
+					Type:                   "statefulset",
+					Headless:               true,
+					PublishNotReadyAddress: false,
+				},
+				Validators: []frame2.Validator{
+					validates.Nslookup{
+						Namespace: prvPromise,
+						Name:      "backend-0.backend",
+					},
+					// TODO this is failing.  Is this?  Inconsistent
+					//					validates.Nslookup{
+					//						Namespace: pubPromise,
+					//						Name:      "backend-0.backend",
+					//					},
+				},
+				ValidatorRetry: frame2.RetryOptions{
+					Interval: time.Second,
+					// TODO: Make this parallel, and change back to 30s
+					Ensure: 15, // For at least the initial 30s, the names should _not_ be published.
+				},
+				ExpectError: true,
+			}, {
+				Doc: "After the initial 30s from the previous step, give at most 2m for it to be up",
+				Validators: []frame2.Validator{
+					validates.Nslookup{
+						Namespace: prvPromise,
+						Name:      "backend-0.backend",
+					},
+					validates.Nslookup{
+						Namespace: pubPromise,
+						Name:      "backend-0.backend",
+					},
+				},
+				ValidatorRetry: frame2.RetryOptions{
+					Interval: time.Second,
+					Ensure:   3,
+					Allow:    120,
+				},
+			},
+		},
+	}
+	control.Run()
+
 	bindSkupperBased := frame2.Phase{
 		Runner: runner,
 		Name:   "bind-skupper-based-stateful",
-		Doc:    "Skupper service basing a statefulset; the statefulset is bound to the service",
+		Doc:    "Skupper service basing a statefulset; the statefulset gets bound to the service",
 		Setup: []frame2.Step{
 			{
 				Doc: "Create a Skupper service for the statefulset",
@@ -220,7 +297,7 @@ func TestIssue832(t *testing.T) {
 					StatefulSet:  &baseSf,
 				},
 			}, {
-				Doc: "Bind the stateful set; expect the name to not be available for at least 30s",
+				Doc: "Bind the stateful set; expect the name to be available before the actual pod is ready",
 				Modify: execute.SkupperServiceBind{
 					Runner:                 runner,
 					Namespace:              prvPromise,
@@ -233,34 +310,18 @@ func TestIssue832(t *testing.T) {
 				Validators: []frame2.Validator{
 					validates.Nslookup{
 						Namespace: prvPromise,
-						Name:      "backend",
+						Name:      "backend-0.backend",
 					},
 					validates.Nslookup{
 						Namespace: pubPromise,
-						Name:      "backend",
+						Name:      "backend-0.backend",
 					},
 				},
 				ValidatorRetry: frame2.RetryOptions{
 					Interval: time.Second,
 					Ensure:   30,
-				},
-				//ExpectError: true,
-			}, {
-				Doc: "After the initial 30s from the previous step, give at most 1m for it to be up",
-				Validators: []frame2.Validator{
-					validates.Nslookup{
-						Namespace: prvPromise,
-						Name:      "backend",
-					},
-					validates.Nslookup{
-						Namespace: pubPromise,
-						Name:      "backend",
-					},
-				},
-				ValidatorRetry: frame2.RetryOptions{
-					Interval: time.Second,
-					Ensure:   3,
-					Allow:    60,
+					Allow:    10,
+					Retries:  100,
 				},
 			},
 		},
@@ -277,76 +338,48 @@ func TestIssue832(t *testing.T) {
 				Modify: execute.K8SServiceCreate{
 					// TODO add Runner to this guy
 					// Runner:    runner,
-					Namespace: prvPromise,
-					Name:      "backend",
-					Ports:     []int32{8080},
-					Labels:    labels,
-					Selector:  labels,
-					ClusterIP: "None",
-					Type:      core.ServiceTypeClusterIP,
-					//AutoTeardown: true,
+					Namespace:    prvPromise,
+					Name:         "backend",
+					Ports:        []int32{8080},
+					Labels:       labels,
+					Selector:     labels,
+					ClusterIP:    "None",
+					Type:         core.ServiceTypeClusterIP,
+					AutoTeardown: true,
 				},
 			}, {
 				Doc: "Deploy a hello-world-backend server, with a readiness probe delayed to start only after 60 seconds",
 				Modify: &execute.K8SStatefulSet{
 					Namespace:    prvPromise,
-					AutoTeardown: true,
 					StatefulSet:  &baseSf,
+					AutoTeardown: true,
 				},
 			}, {
-				Doc: "Expose the stateful set",
+				Doc: "Expose the stateful set via Skupper; expect the names to be almost immediatelly available",
 				Modify: execute.SkupperExpose{
-					Runner:    runner,
-					Namespace: prvPromise,
-					Name:      "backend",
-					Type:      "statefulset",
-					Headless:  true,
-					//PublishNotReadyAddress: true,
-					Address: "backend",
-					//AutoTeardown:           true,
-				},
-			}, {
-				Doc: "Bind the stateful set; expect the name to not be available for at least 30s",
-				Modify: execute.SkupperServiceBind{
 					Runner:                 runner,
 					Namespace:              prvPromise,
 					Name:                   "backend",
-					TargetType:             "statefulset",
-					TargetName:             "backend",
+					Type:                   "statefulset",
+					Headless:               true,
 					PublishNotReadyAddress: true,
-					AutoTeardown:           true,
+					Address:                "backend",
+					//AutoTeardown:           true,
 				},
 				Validators: []frame2.Validator{
 					validates.Nslookup{
-						Namespace: prvPromise,
-						Name:      "backend",
-					},
-					validates.Nslookup{
 						Namespace: pubPromise,
-						Name:      "backend",
+						Name:      "backend-0.backend",
 					},
-				},
-				ValidatorRetry: frame2.RetryOptions{
-					Interval: time.Second,
-					Ensure:   30,
-				},
-				//ExpectError: true,
-			}, {
-				Doc: "After the initial 30s from the previous step, give at most 1m for it to be up",
-				Validators: []frame2.Validator{
 					validates.Nslookup{
 						Namespace: prvPromise,
-						Name:      "backend",
-					},
-					validates.Nslookup{
-						Namespace: pubPromise,
-						Name:      "backend",
+						Name:      "backend-0.backend",
 					},
 				},
 				ValidatorRetry: frame2.RetryOptions{
 					Interval: time.Second,
 					Ensure:   3,
-					Allow:    60,
+					Allow:    30,
 				},
 			},
 		},

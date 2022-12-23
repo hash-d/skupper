@@ -51,7 +51,7 @@ type RetryOptions struct {
 
 	KeepTrying bool
 	Ctx        context.Context
-	Timeout    time.Duration // TODO Wrapps, updated Ctx, so others can be use it
+	Timeout    time.Duration
 }
 
 func (r Retry) Run() ([]error, error) {
@@ -78,6 +78,11 @@ func (r Retry) Run() ([]error, error) {
 	ctx := r.Options.Ctx
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	var cn context.CancelFunc
+	if r.Options.Timeout > 0 {
+		ctx, cn = context.WithTimeout(ctx, r.Options.Timeout)
+		defer cn()
 	}
 	for {
 		// Before any tries, check the context

@@ -36,6 +36,7 @@ func (n Nslookup) Validate() error {
 	n.Cmd.Shell = true
 
 	phase := frame2.Phase{
+		Runner: n.Runner,
 		MainSteps: []frame2.Step{
 			{
 				Modify: &n.Cmd,
