@@ -19,7 +19,7 @@ type K8SDeploymentOpts struct {
 	Name           string
 	Namespace      *base.ClusterContextPromise
 	DeploymentOpts k8s.DeploymentOpts
-	Wait           time.Duration
+	Wait           time.Duration // Waits for the deployment to be ready.  Otherwise, returns as soon as the create instruction has been issued.  If the wait lapses, return an error.
 	Runner         *frame2.Run
 
 	Ctx context.Context

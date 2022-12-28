@@ -13,13 +13,14 @@ import (
 
 // Creates a Kubernetes service, with simplified configurations
 type K8SServiceCreate struct {
-	Namespace   *base.ClusterContextPromise
-	Name        string
-	Annotations map[string]string
-	Labels      map[string]string
-	Selector    map[string]string
-	Ports       []int32
-	Type        apiv1.ServiceType
+	Namespace                *base.ClusterContextPromise
+	Name                     string
+	Annotations              map[string]string
+	Labels                   map[string]string
+	Selector                 map[string]string
+	Ports                    []int32
+	Type                     apiv1.ServiceType
+	PublishNotReadyAddresses bool
 
 	// Cluster IP; set this to "None" and Type to ClusterIP for a headless service
 	// https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
@@ -44,10 +45,11 @@ func (ks K8SServiceCreate) Execute() error {
 			Annotations: ks.Annotations,
 		},
 		Spec: apiv1.ServiceSpec{
-			Ports:     ports,
-			Selector:  ks.Selector,
-			Type:      ks.Type,
-			ClusterIP: ks.ClusterIP,
+			Ports:                    ports,
+			Selector:                 ks.Selector,
+			Type:                     ks.Type,
+			ClusterIP:                ks.ClusterIP,
+			PublishNotReadyAddresses: ks.PublishNotReadyAddresses,
 		},
 	}
 

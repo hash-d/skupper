@@ -94,31 +94,37 @@ func processStep_(t *testing.T, step Step) error {
 		validatorList = append([]Validator{step.Validator}, validatorList...)
 	}
 
-	for _, v := range validatorList {
-		log.Printf("[R] Validator %T", v)
-
-		fn := v.Validate
-		if step.ExpectError {
-			fn = func() error {
+	if len(validatorList) > 0 {
+		fn := func() error {
+			someFailure := false
+			someSuccess := false
+			var lastErr error
+			for _, v := range validatorList {
+				log.Printf("[R] Validator %T", v)
 				err := v.Validate()
 				if err == nil {
-					return fmt.Errorf("Error expected but not realised")
+					someSuccess = true
 				} else {
-					return nil
+					someFailure = true
+					lastErr = err
+					log.Printf("[R] Validator %T failed: %v", v, err)
+					// Error or not, we do not break or return; we check all
 				}
-
 			}
+			if step.ExpectError && someSuccess {
+				return fmt.Errorf("error expected, but at least one validator passed")
+			}
+			if !step.ExpectError && someFailure {
+				return fmt.Errorf("at least one validator failed.  last error: %w", lastErr)
+			}
+			return nil
 		}
 
 		_, err := Retry{
 			Fn:      fn,
 			Options: step.ValidatorRetry,
 		}.Run()
-
-		if err != nil {
-			log.Printf("[R] Validator %T failed: %v", v, err)
-			return err
-		}
+		return err
 	}
 	return nil
 }

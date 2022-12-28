@@ -33,6 +33,8 @@ type SkupperExpose struct {
 	Ports                  []int
 	PublishNotReadyAddress bool
 	TargetPorts            []string
+
+	AutoTeardown bool
 }
 
 func (se SkupperExpose) Execute() error {
@@ -99,7 +101,60 @@ func (se SkupperExpose) Execute() error {
 		},
 	}
 
-	phase.Run()
+	return phase.Run()
+}
 
-	return nil
+func (se SkupperExpose) Teardown() frame2.Executor {
+
+	if !se.AutoTeardown {
+		return nil
+	}
+
+	return SkupperUnexpose{
+		Namespace: se.Namespace,
+		Type:      se.Type,
+		Name:      se.Name,
+		Address:   se.Address,
+
+		Runner: se.Runner,
+	}
+
+}
+
+type SkupperUnexpose struct {
+	Namespace *base.ClusterContextPromise
+	Type      string
+	Name      string
+	Address   string
+
+	Runner *frame2.Run
+}
+
+func (su SkupperUnexpose) Execute() error {
+	var args []string
+
+	if su.Type == "" || su.Name == "" {
+		return fmt.Errorf("SkupperExpose configuration error - type and name must be specified")
+	}
+
+	args = append(args, "unexpose", su.Type, su.Name)
+
+	if su.Address != "" {
+		args = append(args, "--address", su.Address)
+	}
+
+	phase := frame2.Phase{
+		Runner: su.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: &CliSkupper{
+					Args:           args,
+					ClusterContext: su.Namespace,
+				},
+			},
+		},
+	}
+
+	return phase.Run()
+
 }
