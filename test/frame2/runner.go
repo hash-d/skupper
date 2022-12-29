@@ -10,9 +10,10 @@ import (
 )
 
 type Run struct {
-	T      *testing.T
-	Doc    string // TODO this is currently unused (ie, it's not printed)
-	savedT *testing.T
+	T            *testing.T
+	Doc          string // TODO this is currently unused (ie, it's not printed)
+	savedT       *testing.T
+	currentPhase int
 }
 
 type Phase struct {
@@ -29,18 +30,18 @@ type Phase struct {
 	previousRun bool
 }
 
-func processStep(t *testing.T, step Step) error {
+func processStep(t *testing.T, step Step, id string) error {
 	// TODO: replace [R] with own logger with Prefix?
 	var err error
 	if step.Name != "" {
 		// For a named test, run or fail, we work the same.  It's up to t to
 		// mark it as failed
 		_ = t.Run(step.Name, func(t *testing.T) {
-			log.Printf("[R] Doc: %v", step.Doc)
-			processErr := processStep_(t, step)
+			log.Printf("[R] %v Doc: %v", id, step.Doc)
+			processErr := processStep_(t, step, id)
 			if processErr != nil {
 				// This makes it easier to find the failures in log files
-				log.Printf("[R] test %q failed", t.Name())
+				log.Printf("[R] test %v - %q failed", id, t.Name())
 				// For named tests, we do not return the error up; we
 				// just mark it as a failed test
 				t.Errorf("test failed: %v", processErr)
@@ -48,40 +49,31 @@ func processStep(t *testing.T, step Step) error {
 		})
 	} else {
 		// TODO.  Add the step number (like 2.1.3)
-		log.Printf("[R] Step doc %q", step.Doc)
-		err = processStep_(t, step)
+		log.Printf("[R] %v doc %q", id, step.Doc)
+		err = processStep_(t, step, id)
 	}
 	return err
 
 }
-func processStep_(t *testing.T, step Step) error {
+func processStep_(t *testing.T, step Step, id string) error {
 	if step.Modify != nil {
-		log.Printf("[R] Modifier %T", step.Modify)
+		log.Printf("[R] %v Modifier %T", id, step.Modify)
 		err := step.Modify.Execute()
 		if err != nil {
 			return fmt.Errorf("modify step failed: %w", err)
 		}
 	}
 
-	// TODO here and elsewhere: join Substep and Substeps in a single
-	// list and use just one code.
+	subStepList := step.Substeps
 	if step.Substep != nil {
+		subStepList = append([]*Step{step.Substep}, step.Substeps...)
+	}
+	for i, subStep := range subStepList {
 		_, err := Retry{
 			Fn: func() error {
-				return processStep(t, *step.Substep)
+				return processStep(t, *subStep, fmt.Sprintf("%v.sub%d", id, i))
 			},
 			Options: step.SubstepRetry,
-		}.Run()
-		if err != nil {
-			return fmt.Errorf("substep failed: %w", err)
-		}
-	}
-	for _, subStep := range step.Substeps {
-		_, err := Retry{
-			Fn: func() error {
-				return processStep(t, *subStep)
-			},
-			Options: subStep.SubstepRetry,
 		}.Run()
 		if err != nil {
 			return fmt.Errorf("substep failed: %w", err)
@@ -99,15 +91,15 @@ func processStep_(t *testing.T, step Step) error {
 			someFailure := false
 			someSuccess := false
 			var lastErr error
-			for _, v := range validatorList {
-				log.Printf("[R] Validator %T", v)
+			for i, v := range validatorList {
+				log.Printf("[R] %v.v%d Validator %T", id, i, v)
 				err := v.Validate()
 				if err == nil {
 					someSuccess = true
 				} else {
 					someFailure = true
 					lastErr = err
-					log.Printf("[R] Validator %T failed: %v", v, err)
+					log.Printf("[R] %v.v%d Validator %T failed: %v", id, i, v, err)
 					// Error or not, we do not break or return; we check all
 				}
 			}
@@ -189,6 +181,8 @@ func (p *Phase) run() error {
 		runner = p.Runner
 	}
 
+	runner.currentPhase++
+
 	// The Runner is public; we do not want people messing with it in the middle
 	// of a Run
 	if p.previousRun && p.Runner != p.savedRunner {
@@ -225,8 +219,7 @@ func (p *Phase) run() error {
 	// TODO: allow for optional interface.  If the step also implements Teardown(),
 	// execute it and add its result to the teardown list.
 	if len(p.Setup) > 0 {
-		log.Printf("Starting setup")
-		for _, step := range p.Setup {
+		for i, step := range p.Setup {
 			if step.Modify != nil {
 				if downerStep, ok := step.Modify.(TearDowner); ok {
 					tdFunction := downerStep.Teardown()
@@ -237,7 +230,7 @@ func (p *Phase) run() error {
 					}
 				}
 			}
-			if err := processStep(t, step); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("%v.set%d", runner.currentPhase, i)); err != nil {
 				if t != nil {
 					t.Errorf("setup failed: %v", err)
 				}
@@ -249,8 +242,8 @@ func (p *Phase) run() error {
 	var savedErr error
 	if len(p.MainSteps) > 0 {
 		// log.Printf("Starting main steps")
-		for _, step := range p.MainSteps {
-			if err := processStep(t, step); err != nil {
+		for i, step := range p.MainSteps {
+			if err := processStep(t, step, fmt.Sprintf("%v.main%d", runner.currentPhase, i)); err != nil {
 				savedErr = err
 				if t != nil {
 					t.Errorf("test failed: %v", err)
@@ -284,7 +277,7 @@ func (p *Phase) teardown() {
 		log.Printf("Starting teardown")
 		// This one runs in normal order, since the user listed them themselves
 		for i, step := range p.Teardown {
-			if err := processStep(t, step); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("down%v", i)); err != nil {
 				if t == nil {
 					log.Printf("Tear down step %d failed: %v", i, err)
 				} else {

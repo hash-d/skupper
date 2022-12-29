@@ -15,6 +15,8 @@ type Curl struct {
 	Fail400Plus bool
 	Podname     string // Passed to tools.Curl.  Generally safe to leave empty.  Check tools.Curl docs
 	DeployCurl  bool   // Not Implemented
+
+	// TODO: Add cli.Expect to inspect results?
 }
 
 func (c Curl) Validate() error {

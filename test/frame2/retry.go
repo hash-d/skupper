@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -88,6 +89,9 @@ func (r Retry) Run() ([]error, error) {
 		// Before any tries, check the context
 		err := ctx.Err()
 		if err != nil {
+			if !r.Options.Quiet {
+				log.Printf("retry cancelled: %v", err)
+			}
 			return results, err
 		}
 
@@ -107,10 +111,19 @@ func (r Retry) Run() ([]error, error) {
 			}
 			// It's a success, but not enough; we'll try again
 			if !r.Options.Quiet {
-				log.Printf(
-					"Attempt %d succeeded; %d consecutive success, %d ignored",
-					totalTries, consecutiveSuccess, ignoredSuccess,
-				)
+				var info = []string{}
+				if r.Options.Ensure > 1 {
+					info = append(info, fmt.Sprintf("%d/%d consecutive successes", consecutiveSuccess, r.Options.Ensure))
+				}
+				if r.Options.Ignore > 0 {
+					info = append(info, fmt.Sprintf("%d/%d ignored", ignoredSuccess, r.Options.Ignore))
+				}
+
+				msg := fmt.Sprintf("Attempt %d succeeded; ", totalTries)
+
+				msg = msg + strings.Join(info, ",")
+
+				log.Printf(msg)
 			}
 			<-tick.C
 			continue
@@ -134,8 +147,8 @@ func (r Retry) Run() ([]error, error) {
 		}
 		if !r.Options.Quiet {
 			log.Printf(
-				"Attempt %d failed (allow %d first + %d retries used)",
-				totalTries, r.Options.Allow, retries,
+				"Attempt %d failed (allow %d first + %d/%d retries used)",
+				totalTries, r.Options.Allow, retries, r.Options.Retries,
 			)
 		}
 		<-tick.C
