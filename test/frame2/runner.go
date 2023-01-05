@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"testing"
-
-	"github.com/skupperproject/skupper/test/utils/base"
 )
 
 type Run struct {
@@ -17,17 +15,18 @@ type Run struct {
 }
 
 type Phase struct {
-	Name       string
-	Doc        string
-	Setup      []Step
-	Teardown   []Step
-	MainSteps  []Step
-	BaseRunner *base.ClusterTestRunnerBase
-	teardowns  []Executor
-	Runner     *Run
+	Name      string
+	Doc       string
+	Setup     []Step
+	Teardown  []Step
+	MainSteps []Step
+	//BaseRunner *base.ClusterTestRunnerBase
+	teardowns []Executor
+	Runner    *Run
 
 	savedRunner *Run
 	previousRun bool
+	connected   bool
 }
 
 func processStep(t *testing.T, step Step, id string) error {
@@ -37,6 +36,7 @@ func processStep(t *testing.T, step Step, id string) error {
 		// For a named test, run or fail, we work the same.  It's up to t to
 		// mark it as failed
 		_ = t.Run(step.Name, func(t *testing.T) {
+			//log.Printf("[R] %v current test: %q", id, t.Name())
 			log.Printf("[R] %v Doc: %v", id, step.Doc)
 			processErr := processStep_(t, step, id)
 			if processErr != nil {
@@ -46,9 +46,11 @@ func processStep(t *testing.T, step Step, id string) error {
 				// just mark it as a failed test
 				t.Errorf("test failed: %v", processErr)
 			}
+			log.Printf("[R] %v Subtest %q completed", id, t.Name())
 		})
 	} else {
 		// TODO.  Add the step number (like 2.1.3)
+		//log.Printf("[R] %v current test: %q", id, t.Name())
 		log.Printf("[R] %v doc %q", id, step.Doc)
 		err = processStep_(t, step, id)
 	}
@@ -58,7 +60,19 @@ func processStep(t *testing.T, step Step, id string) error {
 func processStep_(t *testing.T, step Step, id string) error {
 	if step.Modify != nil {
 		log.Printf("[R] %v Modifier %T", id, step.Modify)
-		err := step.Modify.Execute()
+		var err error
+		if phase, ok := step.Modify.(Phase); ok {
+			if phase.Runner == nil {
+				phase.Runner = &Run{T: t}
+			}
+			if phase.Name == "" {
+				err = phase.runP(fmt.Sprintf("%v.inner", id))
+			} else {
+				err = phase.runP(id)
+			}
+		} else {
+			err = step.Modify.Execute()
+		}
 		if err != nil {
 			return fmt.Errorf("modify step failed: %w", err)
 		}
@@ -100,6 +114,9 @@ func processStep_(t *testing.T, step Step, id string) error {
 					someFailure = true
 					lastErr = err
 					log.Printf("[R] %v.v%d Validator %T failed: %v", id, i, v, err)
+					if step.ExpectError {
+						log.Printf("[R] (error expected)")
+					}
 					// Error or not, we do not break or return; we check all
 				}
 			}
@@ -145,31 +162,53 @@ func (p Phase) Execute() error {
 }
 
 func (p *Phase) Run() error {
+	return p.runP("")
+}
+
+func (p *Phase) runP(id string) error {
 	var err error
+
+	var idPrefix string
+	if id != "" {
+		idPrefix = fmt.Sprintf("%v ", id)
+	}
 
 	// If a named phase, and within a *testing.T, create a subtest
 	if p.Name != "" && p.Runner.T != nil {
+		//savedRunner := p.Runner
 		ok := p.Runner.T.Run(p.Name, func(t *testing.T) {
+			//log.Printf("[R] %vcurrent test: %q", idPrefix, t.Name())
+			log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
 			p.Runner = &Run{T: t}
-			err = p.run()
+			err = p.run(id)
+			log.Printf("[R] %vSubtest %q completed", idPrefix, t.Name())
 		})
+
+		//p.Runner = savedRunner
 		if !ok && err != nil {
 			err = errors.New("test returned not-ok, but no errors")
 		}
 	} else {
 		// otherwise, just run it
-		err = p.run()
+		//log.Printf("[R] %vcurrent test: %q", idPrefix, p.Runner.T.Name())
+		log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
+		err = p.run(id)
 	}
 
 	if err != nil {
 		if p.Runner.T == nil {
-			log.Printf("Phase error: %v", err)
+			log.Printf("[R] %vPhase error: %v", idPrefix, err)
 		}
 	}
 	return err
 }
 
-func (p *Phase) run() error {
+func (p *Phase) run(id string) error {
+
+	var idPrefix string
+	if id != "" && p.connected {
+		idPrefix = fmt.Sprintf("%v.", id)
+	}
 
 	// If the phase has no runner, let's create one, without a *testing.T.  This
 	// allows the runner to be used disconneced from the testing module.  This
@@ -179,6 +218,8 @@ func (p *Phase) run() error {
 		p.Runner = &Run{}
 		p.savedRunner = p.Runner
 		runner = p.Runner
+	} else {
+		p.connected = true
 	}
 
 	runner.currentPhase++
@@ -212,9 +253,9 @@ func (p *Phase) run() error {
 	//		t.Fatal("test name must be defined")
 	//	}
 
-	if t != nil && p.BaseRunner == nil {
-		p.BaseRunner = &base.ClusterTestRunnerBase{}
-	}
+	//	if t != nil && p.BaseRunner == nil {
+	//		p.BaseRunner = &base.ClusterTestRunnerBase{}
+	//	}
 
 	// TODO: allow for optional interface.  If the step also implements Teardown(),
 	// execute it and add its result to the teardown list.
@@ -225,12 +266,12 @@ func (p *Phase) run() error {
 					tdFunction := downerStep.Teardown()
 
 					if tdFunction != nil {
-						log.Printf("[R] Installed auto-teardown for %T", step.Modify)
+						log.Printf("[R] %vInstalled auto-teardown for %T", idPrefix, step.Modify)
 						p.teardowns = append(p.teardowns, downerStep.Teardown())
 					}
 				}
 			}
-			if err := processStep(t, step, fmt.Sprintf("%v.set%d", runner.currentPhase, i)); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("%v%v.set%d", idPrefix, runner.currentPhase, i)); err != nil {
 				if t != nil {
 					t.Errorf("setup failed: %v", err)
 				}
@@ -243,7 +284,7 @@ func (p *Phase) run() error {
 	if len(p.MainSteps) > 0 {
 		// log.Printf("Starting main steps")
 		for i, step := range p.MainSteps {
-			if err := processStep(t, step, fmt.Sprintf("%v.main%d", runner.currentPhase, i)); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("%v%v.main%d", idPrefix, runner.currentPhase, i)); err != nil {
 				savedErr = err
 				if t != nil {
 					t.Errorf("test failed: %v", err)

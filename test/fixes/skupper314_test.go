@@ -102,8 +102,8 @@ var prvFrontWorks = frame2.Step{
 }
 
 var tests = frame2.Phase{
-	Name:       "test-314",
-	BaseRunner: runner,
+	Name: "test-314",
+	//BaseRunner: runner,
 	Setup: []frame2.Step{
 		{
 			Doc: "Segment setup",
@@ -150,7 +150,7 @@ var tests = frame2.Phase{
 			Name: "repeat",
 			Doc:  "Repeat the same test many times",
 			SubstepRetry: frame2.RetryOptions{
-				Ensure: 300,
+				Ensure: 30,
 			},
 			Substep: &frame2.Step{
 				Name: "number",

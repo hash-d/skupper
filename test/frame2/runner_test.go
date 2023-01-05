@@ -13,13 +13,12 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/validate"
-	"github.com/skupperproject/skupper/test/utils/base"
 	"gotest.tools/assert"
 )
 
 func TestPlayground(t *testing.T) {
 
-	var runner = &base.ClusterTestRunnerBase{}
+	//var runner = &base.ClusterTestRunnerBase{}
 
 	var tests = frame2.Phase{
 		Name: "test-playground",
@@ -61,7 +60,7 @@ func TestPlayground(t *testing.T) {
 				},
 			},
 		},
-		BaseRunner: runner,
+		//BaseRunner: runner,
 	}
 	assert.Assert(t, tests.RunT(t))
 }
@@ -286,5 +285,136 @@ func TestAutoTearDown(t *testing.T) {
 		},
 	}
 	test.Run()
+
+}
+
+// This is used for TestInner
+type SimpleComposed struct {
+	Runner *frame2.Run
+}
+
+func (s SimpleComposed) Execute() error {
+	phase := frame2.Phase{
+		Runner: s.Runner,
+		Name:   "Composed-Inner",
+		Doc:    "The phase within the composed Executor",
+		MainSteps: []frame2.Step{
+			{
+				Doc:    "The step within the composed Executor",
+				Modify: execute.Success{},
+			},
+		},
+	}
+	return phase.Run()
+}
+
+func TestInner(t *testing.T) {
+
+	runner := frame2.Run{
+		T:   t,
+		Doc: "Tests different types of child executions",
+	}
+
+	testSubsteps := frame2.Phase{
+		Name:   "Substeps",
+		Doc:    "execute.Success is executed within a substep on a top-level Phase",
+		Runner: &runner,
+		MainSteps: []frame2.Step{
+			{
+				Doc: "The containing step",
+				Substeps: []*frame2.Step{
+					{
+						Doc:    "Unnamed substep 1",
+						Modify: execute.Success{},
+					}, {
+						Name:   "Substep-Inner-1",
+						Doc:    "The inner substep",
+						Modify: execute.Success{},
+					}, {
+						Doc:    "Unnamed substep 2",
+						Modify: execute.Success{},
+					}, {
+						Name:   "Substep-Inner-2",
+						Doc:    "The inner substep 2",
+						Modify: execute.Success{},
+					},
+				},
+			},
+		},
+	}
+	testSubsteps.Run()
+
+	testInnerPhase := frame2.Phase{
+		Name:   "Inner-phases",
+		Doc:    "execute.Success is executed within an inner phase (a phase used as a Modify in a top level Phase)",
+		Runner: &runner,
+		MainSteps: []frame2.Step{
+			{
+				Doc: "The containing step for the unnamed inner phase 1",
+				Modify: frame2.Phase{
+					Doc: "The unnamed inner phase 1",
+					MainSteps: []frame2.Step{
+						{
+							Doc:    "The inner phase's step",
+							Modify: execute.Success{},
+						},
+					},
+				},
+			}, {
+				Doc: "The containing step for the named inner phase 1",
+				Modify: frame2.Phase{
+					//			Runner: &runner,
+					Name: "Phase-Inner-1",
+					Doc:  "The inner phase 1",
+					MainSteps: []frame2.Step{
+						{
+							Doc:    "The inner phase's step",
+							Modify: execute.Success{},
+						},
+					},
+				},
+			}, {
+				Doc: "The containing step for the unnamed inner phase 2",
+				Modify: frame2.Phase{
+					Doc: "The unnamed inner phase 2",
+					MainSteps: []frame2.Step{
+						{
+							Doc:    "The inner phase's step",
+							Modify: execute.Success{},
+						},
+					},
+				},
+			}, {
+				Doc: "The containing step for the named inner phase 2",
+				Modify: frame2.Phase{
+					//			Runner: &runner,
+					Name: "Phase-Inner-2",
+					Doc:  "The inner phase 2",
+					MainSteps: []frame2.Step{
+						{
+							Doc:    "The inner phase's step",
+							Modify: execute.Success{},
+						},
+					},
+				},
+			},
+		},
+	}
+	testInnerPhase.Run()
+
+	testComposed := frame2.Phase{
+		Name:   "Inner-Composed",
+		Doc:    "execute.Success is executed in a composed Executor (an Executor that has its own internal phase, connected to the same Runner as the parent Phase)",
+		Runner: &runner,
+		MainSteps: []frame2.Step{
+			{
+				Doc: "The containing step",
+				Modify: SimpleComposed{
+					Runner: &runner,
+				},
+			},
+		},
+	}
+	testComposed.Run()
 
 }

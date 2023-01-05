@@ -107,6 +107,9 @@ func (r Retry) Run() ([]error, error) {
 			}
 			// Are we good?
 			if consecutiveSuccess >= ensure {
+				if totalTries > 1 {
+					log.Printf("Success on attempt %v", totalTries)
+				}
 				return results, nil
 			}
 			// It's a success, but not enough; we'll try again
@@ -146,10 +149,14 @@ func (r Retry) Run() ([]error, error) {
 			retries++
 		}
 		if !r.Options.Quiet {
-			log.Printf(
+			msg := fmt.Sprintf(
 				"Attempt %d failed (allow %d first + %d/%d retries used)",
 				totalTries, r.Options.Allow, retries, r.Options.Retries,
 			)
+			if r.Options.KeepTrying {
+				msg += " [keep trying]"
+			}
+			log.Print(msg)
 		}
 		<-tick.C
 	}
