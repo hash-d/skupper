@@ -257,8 +257,6 @@ func (p *Phase) run(id string) error {
 	//		p.BaseRunner = &base.ClusterTestRunnerBase{}
 	//	}
 
-	// TODO: allow for optional interface.  If the step also implements Teardown(),
-	// execute it and add its result to the teardown list.
 	if len(p.Setup) > 0 {
 		for i, step := range p.Setup {
 			if step.Modify != nil {
@@ -273,7 +271,7 @@ func (p *Phase) run(id string) error {
 			}
 			if err := processStep(t, step, fmt.Sprintf("%v%v.set%d", idPrefix, runner.currentPhase, i)); err != nil {
 				if t != nil {
-					t.Errorf("setup failed: %v", err)
+					t.Fatalf("setup failed: %v", err)
 				}
 				return err
 			}

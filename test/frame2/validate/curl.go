@@ -8,8 +8,15 @@ import (
 	"github.com/skupperproject/skupper/test/utils/tools"
 )
 
+// Provides an interface to tools.Curl, with some enhancements.
+//
+// If CurlOptions.Timeout is zero, a default is set, instead.
 type Curl struct {
-	Namespace   *base.ClusterContextPromise
+	Namespace *base.ClusterContextPromise
+
+	// CurlOptions is passed as-is to tools.Curl, with the exception that a
+	// default of 60s is set for the timeout, if the original value is
+	// zero.
 	CurlOptions tools.CurlOpts
 	Url         string
 	Fail400Plus bool
@@ -25,7 +32,7 @@ func (c Curl) Validate() error {
 	}
 	if c.CurlOptions.Timeout == 0 {
 		// There is no reason to give Curl no time to respond
-		c.CurlOptions.Timeout = 2
+		c.CurlOptions.Timeout = 60
 	}
 	cluster, err := c.Namespace.Satisfy()
 	if err != nil {

@@ -98,6 +98,10 @@ func (r Retry) Run() ([]error, error) {
 		totalTries++
 		err = r.Fn()
 		results = append(results, err)
+		var contextInfo string
+		if dl, ok := ctx.Deadline(); ok {
+			contextInfo = fmt.Sprintf(" [timeout in %v]", dl.Sub(time.Now()))
+		}
 		if err == nil {
 			// Are we counting this as a success?
 			if ignoredSuccess >= r.Options.Ignore || totalTries > r.Options.Ignore {
@@ -121,6 +125,7 @@ func (r Retry) Run() ([]error, error) {
 				if r.Options.Ignore > 0 {
 					info = append(info, fmt.Sprintf("%d/%d ignored", ignoredSuccess, r.Options.Ignore))
 				}
+				info = append(info, contextInfo)
 
 				msg := fmt.Sprintf("Attempt %d succeeded; ", totalTries)
 
@@ -156,6 +161,7 @@ func (r Retry) Run() ([]error, error) {
 			if r.Options.KeepTrying {
 				msg += " [keep trying]"
 			}
+			msg += contextInfo
 			log.Print(msg)
 		}
 		<-tick.C

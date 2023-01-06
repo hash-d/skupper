@@ -127,3 +127,32 @@ func (kdg K8SDeploymentGet) Validate() error {
 
 	return nil
 }
+
+type K8SDeploymentAnnotate struct {
+	Namespace   *base.ClusterContextPromise
+	Name        string
+	Annotations map[string]string
+}
+
+func (kda K8SDeploymentAnnotate) Execute() error {
+	cluster, err := kda.Namespace.Satisfy()
+	if err != nil {
+		return err
+	}
+	// Retrieving Deployment
+	deploy, err := cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Get(kda.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if deploy.Annotations == nil {
+		deploy.Annotations = map[string]string{}
+	}
+
+	for k, v := range kda.Annotations {
+		deploy.Annotations[k] = v
+	}
+	_, err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.Namespace).Update(deploy)
+	return err
+
+}
