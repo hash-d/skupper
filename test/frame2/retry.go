@@ -50,6 +50,10 @@ type RetryOptions struct {
 	Min int // TODO Run as normal, but delay report until that number of tries have been done
 	// This can be used to generate stats from the results
 
+	Rate float32 // TODO: "Ensure" will not be 100%, but based on this rate.  So, if Ensure is 100
+	// And Rate 50%, success will be achieved with at least 50 success in the past
+	// 100 executions
+
 	KeepTrying bool
 	Ctx        context.Context
 	Timeout    time.Duration
