@@ -1,9 +1,13 @@
 package environment
 
 import (
+	"log"
+
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
+	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
@@ -23,7 +27,8 @@ func (hwd HelloWorldDefault) Execute() error {
 
 	baseRunner := base.ClusterTestRunnerBase{}
 
-	topoMap := topology.Simplest{
+	var topoMap topology.Basic
+	topoMap = &topologies.Simplest{
 		Name:           name,
 		TestRunnerBase: &baseRunner,
 	}
@@ -33,8 +38,8 @@ func (hwd HelloWorldDefault) Execute() error {
 		MainSteps: []frame2.Step{
 			{
 				Modify: HelloWorld{
-					Runner:      hwd.Runner,
-					TopologyMap: &topoMap,
+					Runner:   hwd.Runner,
+					Topology: &topoMap,
 				},
 			},
 		},
@@ -64,14 +69,14 @@ type HelloWorldN struct {
 //
 // To use the auto tearDown, make sure to populate the Runner
 type HelloWorld struct {
-	Runner      *frame2.Run // Required for autoTeardown and step logging
-	TopologyMap topology.TopoBuilder
+	Runner   *frame2.Run // Required for autoTeardown and step logging
+	Topology *topology.Basic
 }
 
 func (hw HelloWorld) Execute() error {
 	topo := topology.Topology{
 		Runner:       hw.Runner,
-		TopologyMap:  hw.TopologyMap,
+		TopologyMap:  hw.Topology,
 		AutoTearDown: true,
 	}
 
@@ -79,10 +84,34 @@ func (hw HelloWorld) Execute() error {
 		Runner: hw.Runner,
 		MainSteps: []frame2.Step{
 			{
+				Modify: execute.Function{
+					Fn: func() error {
+						tm, err := (*hw.Topology).GetTopologyMap()
+						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
+						return nil
+					},
+				},
+			}, {
 				Modify: &topo,
 			}, {
+				Modify: execute.Function{
+					Fn: func() error {
+						tm, err := (*hw.Topology).GetTopologyMap()
+						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
+						return nil
+					},
+				},
+			}, {
 				Modify: deploy.HelloWorld{
-					Topology: topo,
+					Topology: hw.Topology,
+				},
+			}, {
+				Modify: execute.Function{
+					Fn: func() error {
+						tm, err := (*hw.Topology).GetTopologyMap()
+						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
+						return nil
+					},
 				},
 			},
 		},

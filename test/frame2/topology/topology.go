@@ -11,6 +11,9 @@ import (
 )
 
 type Basic interface {
+	frame2.Executor
+
+	GetTopologyMap() (*TopologyMap, error)
 
 	// Return a ClusterContext of the given type and number.
 	//
@@ -26,15 +29,27 @@ type Basic interface {
 	// tests that usually run with several namespace to run also with
 	// a smaller number.  For example, on a cluster with 4 private
 	// cluster, a request for number 6 will actually return number 2
-	Get(kind ClusterType, number int) (base.ClusterContext, error)
+	Get(kind ClusterType, number int) (*base.ClusterContext, error)
 
 	// This is the same as Get, but it will fail if the number is higher
 	// than what the cluster provides.  Use this only if the test requires
 	// a specific minimum number of ClusterContexts
 	GetStrict(kind ClusterType, number int) (base.ClusterContext, error)
+
+	// Get all clusterContexts of a certain type.  Note this be filtered
+	// depending on the topology
+	GetAll(kind ClusterType) []*base.ClusterContext
+
+	// Same as above, but unfiltered
+	GetAllStrict(kind ClusterType) []base.ClusterContext
+
+	// Get a list with all clusterContexts, regardless of type or role
+	ListAll() []base.ClusterContext
 }
 
 type TwoBranched interface {
+	Basic
+
 	// Same as Basic.Get(), but specifically on the left branch
 	GetLeft(kind ClusterType, number int) (base.ClusterContext, error)
 
@@ -43,11 +58,6 @@ type TwoBranched interface {
 
 	// Get the ClusterContext that connects the two branches
 	GetVertix(kind ClusterType, number int) (base.ClusterContext, error)
-}
-
-type TopoBuilder interface {
-	BuildTopology() (*TopologyMap, error)
-	frame2.Executor
 }
 
 // The type of cluster:
@@ -108,13 +118,6 @@ type TopologyMap struct {
 	Public  []*base.ClusterContext
 
 	GeneratedMap map[*TopologyItem]*base.ClusterContext
-}
-
-// TopologyMap implements TopoBuilder, so a plain TopologyMap can be
-// used anywhere a Builder is expected.   Here, BuildTopology simply
-// returns a reference to 'self'
-func (tm *TopologyMap) BuildTopology() (*TopologyMap, error) {
-	return tm, nil
 }
 
 // Creates the namespaces based on the provided map
@@ -213,7 +216,7 @@ func (tv TopologyValidator) Execute() error {
 type Topology struct {
 	Runner *frame2.Run
 
-	TopologyMap  TopoBuilder
+	TopologyMap  *Basic
 	AutoTearDown bool
 
 	// TODO Remove this?
@@ -227,25 +230,29 @@ func (t *Topology) Execute() error {
 		Runner: t.Runner,
 		MainSteps: []frame2.Step{
 			{
-				Modify: t.TopologyMap,
+				Modify: *t.TopologyMap,
 			},
 		},
 	}
 	steps.Execute()
 
-	log.Printf("Creating namespaces and installing Skupper")
-
-	var tm *TopologyMap
-	var ok bool
-	if tm, ok = t.TopologyMap.(*TopologyMap); !ok {
-		var err error
-		tm, err = tm.BuildTopology()
-		if err != nil {
-			return fmt.Errorf("Topology failed to execute TopoBuilder: %w", err)
-		}
+	tm, err := (*t.TopologyMap).GetTopologyMap()
+	if err != nil {
+		return fmt.Errorf("failed to get topologyMap: %w", err)
 	}
-	//tm, err := t.TopologyMap.BuildTopology()
+	buildTopologyMap := frame2.Phase{
+		Runner: t.Runner,
+		Setup: []frame2.Step{
+			{
+				Modify: tm,
+			},
+		},
+	}
+	buildTopologyMap.Run()
 
+	log.Printf("Creating namespaces and installing Skupper")
+	// TODO.  Change the range on contexts by a range on topoItems, so that they can
+	// be configured for namespace, skupper or application setup
 	for _, context := range append(tm.Private, tm.Public...) {
 		cc := context.GetPromise()
 

@@ -7,6 +7,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
@@ -15,7 +16,8 @@ func TestHelloWorld(t *testing.T) {
 	testRunnerBase := base.ClusterTestRunnerBase{}
 	runner := frame2.Run{T: t}
 
-	topologyN := topology.N{
+	var topologyN topology.Basic
+	topologyN = &topologies.N{
 		Name:           "hello-n",
 		TestRunnerBase: &testRunnerBase,
 	}
@@ -25,7 +27,7 @@ func TestHelloWorld(t *testing.T) {
 		Name:   "TestHelloWorld",
 		Setup: []frame2.Step{
 			{
-				Modify: &topologyN,
+				Modify: topologyN,
 			}, {
 				Modify: execute.Print{
 					Message: fmt.Sprintf("topologyN: %#v", &topologyN),
@@ -41,8 +43,8 @@ func TestHelloWorld(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: HelloWorld{
-					Runner:      &runner,
-					TopologyMap: topologyN.Return,
+					Runner:   &runner,
+					Topology: &topologyN,
 				},
 			},
 		},
