@@ -10,6 +10,53 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
+type Basic interface {
+
+	// Return a ClusterContext of the given type and number.
+	//
+	// Negative numbers count from the end.  So, Get for -1 will return
+	// the clusterContext with the greatest number of that type.
+	//
+	// Attention that for some types of topologies (suc as TwoBranched)
+	// only part of the clustercontexts may be considered (for example,
+	// only the left branch)
+	//
+	// The number divided against number of contexts of that type on
+	// the topology, and the remainder will be used.  That allows for
+	// tests that usually run with several namespace to run also with
+	// a smaller number.  For example, on a cluster with 4 private
+	// cluster, a request for number 6 will actually return number 2
+	Get(kind ClusterType, number int) (base.ClusterContext, error)
+
+	// This is the same as Get, but it will fail if the number is higher
+	// than what the cluster provides.  Use this only if the test requires
+	// a specific minimum number of ClusterContexts
+	GetStrict(kind ClusterType, number int) (base.ClusterContext, error)
+}
+
+type TwoBranched interface {
+	// Same as Basic.Get(), but specifically on the left branch
+	GetLeft(kind ClusterType, number int) (base.ClusterContext, error)
+
+	// Same as Basic.Get(), but specifically on the right branch
+	GetRight(kind ClusterType, number int) (base.ClusterContext, error)
+
+	// Get the ClusterContext that connects the two branches
+	GetVertix(kind ClusterType, number int) (base.ClusterContext, error)
+}
+
+type TopoBuilder interface {
+	BuildTopology() (*TopologyMap, error)
+	frame2.Executor
+}
+
+// The type of cluster:
+//
+// - Public
+// - Private
+// - DMZ
+//
+// Currently, only the first two are implemented
 type ClusterType int
 
 const (
@@ -18,16 +65,39 @@ const (
 	DMZ
 )
 
+// TopoMap: receives
+
+// A TopologyItem represents a skupper instalation on a namespace.
+// The connections are outgoing links to other TopologyItems (or:
+// to other Skupper installations)
 type TopologyItem struct {
 	Type        ClusterType
 	Connections []*TopologyItem
 	//SkipSkupperDeploy bool // TODO
 }
 
+// TopologyMap receives a list of TopologyItem that describe the topology.
+//
+// When executed, it creates the required ClusterContexts and returns three items:
+//
+// - A list of private clusterContexts
+// - A list of public  clusterContexts
+// - A go map from TopologyItem to ClusterContext
+//
+// These ClusterContexts do not yet refer to existing namespaces: that, along
+// with Skupper installation and creation of the links is done by Topology and
+// TopologyConnect.
+//
+// In general, tests should not use a TopologyMap as an executor.  Instead,
+// just define it on a Topology, which will execute it.
+//
 // clients should keep a reference to a TopologyMap to
 // get their output
 type TopologyMap struct {
-	Name           string
+	// This will become the prefix on the name for the namespaces created
+	Name string
+
+	// All namespaces are created by a base.ClusterTestRunnerBase.
 	TestRunnerBase *base.ClusterTestRunnerBase
 
 	// Input
@@ -40,7 +110,16 @@ type TopologyMap struct {
 	GeneratedMap map[*TopologyItem]*base.ClusterContext
 }
 
-// Validate: check for duplicates, disconnected items, etc (but allow to skip validation)
+// TopologyMap implements TopoBuilder, so a plain TopologyMap can be
+// used anywhere a Builder is expected.   Here, BuildTopology simply
+// returns a reference to 'self'
+func (tm *TopologyMap) BuildTopology() (*TopologyMap, error) {
+	return tm, nil
+}
+
+// Creates the namespaces based on the provided map
+//
+// TODO: Validate: check for duplicates, disconnected items, etc (but allow to skip validation)
 func (tm *TopologyMap) Execute() error {
 	if tm.Name == "" {
 		return fmt.Errorf("TopologyMap configurarion error: no name provided")
@@ -113,28 +192,37 @@ func (tm *TopologyMap) Execute() error {
 	return nil
 }
 
+// TODO: Not yet implemented
 type TopologyValidator struct {
 	TopologyMap
 }
 
 func (tv TopologyValidator) Execute() error {
+	log.Printf("TopologyValidator not yet implemented")
 	return nil
 }
 
-// Creates a full topology: clusters, namespaces,
-// skupper installations and the links between them
+// Based on a TopologyMap, create the VAN:
+//
+// - Create the namespaces/ClusterContexts
+// - Install Skupper
+// - Create the links between the nodes.
 //
 // This ties together TopologyMap, TopologyConnect
 // and other items
 type Topology struct {
-	Runner       *frame2.Run
-	TopologyMap  *TopologyMap
+	Runner *frame2.Run
+
+	TopologyMap  TopoBuilder
 	AutoTearDown bool
 
+	// TODO Remove this?
 	teardowns []frame2.Executor
 }
 
 func (t *Topology) Execute() error {
+
+	// Create the ClusterContexts
 	steps := frame2.Phase{
 		Runner: t.Runner,
 		MainSteps: []frame2.Step{
@@ -147,7 +235,18 @@ func (t *Topology) Execute() error {
 
 	log.Printf("Creating namespaces and installing Skupper")
 
-	for _, context := range append(t.TopologyMap.Private, t.TopologyMap.Public...) {
+	var tm *TopologyMap
+	var ok bool
+	if tm, ok = t.TopologyMap.(*TopologyMap); !ok {
+		var err error
+		tm, err = tm.BuildTopology()
+		if err != nil {
+			return fmt.Errorf("Topology failed to execute TopoBuilder: %w", err)
+		}
+	}
+	//tm, err := t.TopologyMap.BuildTopology()
+
+	for _, context := range append(tm.Private, tm.Public...) {
 		cc := context.GetPromise()
 
 		createAndInstall := frame2.Phase{
@@ -174,7 +273,7 @@ func (t *Topology) Execute() error {
 		MainSteps: []frame2.Step{
 			{
 				Modify: TopologyConnect{
-					TopologyMap: *t.TopologyMap,
+					TopologyMap: *tm,
 				},
 			},
 		},
@@ -215,7 +314,7 @@ func (tc TopologyConnect) Execute() error {
 		for _, to := range from.Connections {
 			pivot := tc.TopologyMap.GeneratedMap[to]
 			connName := fmt.Sprintf("%v-to-%v", ctx.Namespace, pivot.Namespace)
-			log.Printf("TopologyConnect creating connection from %v", connName)
+			log.Printf("TopologyConnect creating connection %v", connName)
 			err := execute.SkupperConnect{
 				Name:       connName,
 				From:       ctx.GetPromise(),

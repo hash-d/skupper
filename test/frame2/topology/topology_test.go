@@ -44,7 +44,7 @@ func TestTopologyMap(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: &Topology{
-					TopologyMap: TopologyMap{
+					TopologyMap: &TopologyMap{
 						Name:           "topo",
 						TestRunnerBase: &runner,
 						Map:            topoMap,

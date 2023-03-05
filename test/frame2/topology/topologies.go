@@ -15,7 +15,7 @@ type Simplest struct {
 	Return *TopologyMap
 }
 
-func (n *Simplest) Execute() error {
+func (s *Simplest) Execute() error {
 
 	pub1 := &TopologyItem{
 		Type: Public,
@@ -31,25 +31,33 @@ func (n *Simplest) Execute() error {
 		prv1,
 	}
 
-	n.Return = &TopologyMap{
-		Name:           n.Name,
-		TestRunnerBase: n.TestRunnerBase,
+	s.Return = &TopologyMap{
+		Name:           s.Name,
+		TestRunnerBase: s.TestRunnerBase,
 		Map:            topoMap,
 	}
 
 	return nil
 }
 
+func (s *Simplest) BuildTopology() (*TopologyMap, error) {
+	var err error
+	if s.Return == nil {
+		err = s.Execute()
+	}
+	return s.Return, err
+}
+
 // Two pub, two private.  Connections always from prv to pub
 //
 // prv1 has two outgoing links; pub2 has two incoming links
 //
-//    pub1 pub2
-//     |  / |     ^
-//     | /  |     |   Connection direction
-//    prv1 prv2
+//	pub1 pub2
+//	 |  / |     ^
+//	 | /  |     |   Connection direction
+//	prv1 prv2
 //
-// Good for minimal multiple link testing
+// # Good for minimal multiple link testing
 //
 // TODO: change this topology, so that:
 //
@@ -59,16 +67,15 @@ func (n *Simplest) Execute() error {
 // It will be easier to think about then this way.  The
 // topology would then be:
 //
-//    pub2 pub1
-//     | \  |     ^
-//     |  \ |     |   Connection direction
-//    prv1 prv2
+//	pub2 pub1
+//	 | \  |     ^
+//	 |  \ |     |   Connection direction
+//	prv1 prv2
 //
 // Also, pub1 and prv1 will be on the ends of the topology, which
 // is the normal thing.
 //
 // TODO above
-//
 type N struct {
 	Name           string
 	TestRunnerBase *base.ClusterTestRunnerBase
@@ -113,4 +120,12 @@ func (n *N) Execute() error {
 	}
 
 	return nil
+}
+
+func (n *N) BuildTopology() (*TopologyMap, error) {
+	var err error
+	if n.Return == nil {
+		err = n.Execute()
+	}
+	return n.Return, err
 }

@@ -3,6 +3,7 @@ package execute
 import (
 	"log"
 
+	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/skupper/cli"
 )
@@ -19,7 +20,7 @@ func (c CliTester) Execute() error {
 	if err != nil {
 		return err
 	}
-	stdout, stderr, err := c.Tester.Run(cluster)
+	stdout, stderr, err := c.Tester.Run(types.PlatformKubernetes, cluster)
 
 	log.Printf("CliTester result: %v", err)
 	log.Printf("CliTester:\nSTDOUT:\n%v\nSTDERR:\n%v", stdout, stderr)

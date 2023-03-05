@@ -27,6 +27,10 @@ func TestFunction(t *testing.T) {
 						return errors.New("failed!")
 					},
 				},
+				// This does not help, as it allows only for
+				// validation errors; modify steps are not expected
+				// to fail
+				ExpectError: true,
 			},
 		},
 	}

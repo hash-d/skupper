@@ -1,6 +1,8 @@
 package deploy
 
 import (
+	"fmt"
+
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/utils/constants"
@@ -18,8 +20,12 @@ type HelloWorld struct {
 func (hw HelloWorld) Execute() error {
 
 	// TODO: change this to calls to Topology
-	pub := hw.Topology.TopologyMap.Public[0]
-	prv := hw.Topology.TopologyMap.Private[0]
+	tm, err := hw.Topology.TopologyMap.BuildTopology()
+	if err != nil {
+		return fmt.Errorf("failed to acquire TopologyMap: %w", err)
+	}
+	pub := tm.Public[0]
+	prv := tm.Private[0]
 
 	frontend, _ := k8s.NewDeployment("hello-world-frontend", pub.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-frontend",
