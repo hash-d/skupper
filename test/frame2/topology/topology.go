@@ -10,6 +10,11 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
+// Any topology needs to implement this interface.
+//
+// Its methods allow for components from frame2.deploy or tests to inquire
+// about the topology's members, and deal with them without direct access to
+// the TopologyMap.
 type Basic interface {
 	frame2.Executor
 
@@ -47,6 +52,12 @@ type Basic interface {
 	ListAll() []base.ClusterContext
 }
 
+// This represents a Topology which starts with a main branch and a secondary
+// branch, connected by a Vertex.
+//
+// It can be used, for example, to test migrations.   The application and
+// Skupper are initially installed on the Left branch, and the test moves it
+// to the Right branch.
 type TwoBranched interface {
 	Basic
 
@@ -57,7 +68,7 @@ type TwoBranched interface {
 	GetRight(kind ClusterType, number int) (base.ClusterContext, error)
 
 	// Get the ClusterContext that connects the two branches
-	GetVertix(kind ClusterType, number int) (base.ClusterContext, error)
+	GetVertex(kind ClusterType, number int) (base.ClusterContext, error)
 }
 
 // The type of cluster:
@@ -83,7 +94,9 @@ const (
 type TopologyItem struct {
 	Type        ClusterType
 	Connections []*TopologyItem
+	//SkipNamespaceCreation
 	//SkipSkupperDeploy bool // TODO
+	//SkipApplicationDeploy
 }
 
 // TopologyMap receives a list of TopologyItem that describe the topology.
@@ -120,7 +133,10 @@ type TopologyMap struct {
 	GeneratedMap map[*TopologyItem]*base.ClusterContext
 }
 
-// Creates the namespaces based on the provided map
+// Creates the ClusterContext items based on the provided map
+//
+// The actual namespaces are not yet created on this step.  Give the TopologyMap to a
+// TopologyBuild to create them (and everything else)
 //
 // TODO: Validate: check for duplicates, disconnected items, etc (but allow to skip validation)
 func (tm *TopologyMap) Execute() error {
@@ -205,41 +221,43 @@ func (tv TopologyValidator) Execute() error {
 	return nil
 }
 
-// Based on a TopologyMap, create the VAN:
+// Based on a Topology, create the VAN:
 //
 // - Create the namespaces/ClusterContexts
 // - Install Skupper
 // - Create the links between the nodes.
 //
-// This ties together TopologyMap, TopologyConnect
+// This ties together Topology, TopologyConnect
 // and other items
-type Topology struct {
+type TopologyBuild struct {
 	Runner *frame2.Run
 
-	TopologyMap  *Basic
+	Topology     *Basic
 	AutoTearDown bool
 
 	// TODO Remove this?
 	teardowns []frame2.Executor
 }
 
-func (t *Topology) Execute() error {
+func (t *TopologyBuild) Execute() error {
 
-	// Create the ClusterContexts
+	// Create the Topology
 	steps := frame2.Phase{
 		Runner: t.Runner,
 		MainSteps: []frame2.Step{
 			{
-				Modify: *t.TopologyMap,
+				Modify: *t.Topology,
 			},
 		},
 	}
 	steps.Execute()
 
-	tm, err := (*t.TopologyMap).GetTopologyMap()
+	tm, err := (*t.Topology).GetTopologyMap()
 	if err != nil {
 		return fmt.Errorf("failed to get topologyMap: %w", err)
 	}
+
+	// Execute the TopologyMap; create the ClusterContext items
 	buildTopologyMap := frame2.Phase{
 		Runner: t.Runner,
 		Setup: []frame2.Step{
@@ -292,7 +310,7 @@ func (t *Topology) Execute() error {
 
 // TODO Perhaps change the frame2.TearDowner interface to return a []frame2.Executor, instead, so a single
 // call may return several, and have them run by the Runner?
-func (t Topology) TearDown() frame2.Executor {
+func (t TopologyBuild) TearDown() frame2.Executor {
 	return execute.Function{
 		Fn: func() error {
 			var ret error
@@ -311,6 +329,8 @@ func (t Topology) TearDown() frame2.Executor {
 
 type TopologyConnect struct {
 	TopologyMap TopologyMap
+	// TODO: add some filters and run only one part of the topology
+	// 	 (allow for late runs)
 }
 
 // Assumes that the namespaces are already created, and Skupper installed on all

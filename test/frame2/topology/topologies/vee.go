@@ -22,10 +22,10 @@ type V struct {
 	TestRunnerBase *base.ClusterTestRunnerBase
 
 	EmptyRight bool // If set, do not deploy Skupper or applications on the right branch
-	VertixType topology.ClusterType
+	VertexType topology.ClusterType
 
 	//For the future
-	// VertixConnectionClusterType // whether Vertix should connect to a pub or private cluster
+	// VertexConnectionClusterType // whether Vertex should connect to a pub or private cluster
 	// Invert right // inverts the selection above for the right branch
 	// NumPub, NumPrv. Allow segments
 

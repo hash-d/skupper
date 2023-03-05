@@ -57,8 +57,8 @@ func TestTopologyMap(t *testing.T) {
 			{
 				Modify: &tm,
 			}, {
-				Modify: &topology.Topology{
-					TopologyMap:  &custom,
+				Modify: &topology.TopologyBuild{
+					Topology:     &custom,
 					AutoTearDown: true,
 				},
 			},

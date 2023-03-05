@@ -74,9 +74,9 @@ type HelloWorld struct {
 }
 
 func (hw HelloWorld) Execute() error {
-	topo := topology.Topology{
+	topo := topology.TopologyBuild{
 		Runner:       hw.Runner,
-		TopologyMap:  hw.Topology,
+		Topology:     hw.Topology,
 		AutoTearDown: true,
 	}
 

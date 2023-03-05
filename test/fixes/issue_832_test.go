@@ -55,9 +55,9 @@ func TestIssue832(t *testing.T) {
 	}
 	phase1.Run()
 
-	topo := &topology.Topology{
+	topo := &topology.TopologyBuild{
 		Runner:       runner,
-		TopologyMap:  topoMap.Return,
+		Topology:     topoMap.Return,
 		AutoTearDown: true,
 	}
 
