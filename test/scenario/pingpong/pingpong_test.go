@@ -32,8 +32,8 @@ func TestPingPong(t *testing.T) {
 	}
 	var runner = &base.ClusterTestRunnerBase{}
 
-	var topology topology.Basic
-	topology = &topologies.V{
+	var topologyV topology.Basic
+	topologyV = &topologies.V{
 		Name:           "pingpong",
 		TestRunnerBase: runner,
 		EmptyRight:     true,
@@ -45,7 +45,7 @@ func TestPingPong(t *testing.T) {
 			{
 				Modify: environment.HelloWorld{
 					Runner:   &r,
-					Topology: &topology,
+					Topology: &topologyV,
 				},
 			},
 		},

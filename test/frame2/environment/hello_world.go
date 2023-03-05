@@ -27,8 +27,8 @@ func (hwd HelloWorldDefault) Execute() error {
 
 	baseRunner := base.ClusterTestRunnerBase{}
 
-	var topoMap topology.Basic
-	topoMap = &topologies.Simplest{
+	var topoSimplest topology.Basic
+	topoSimplest = &topologies.Simplest{
 		Name:           name,
 		TestRunnerBase: &baseRunner,
 	}
@@ -39,7 +39,7 @@ func (hwd HelloWorldDefault) Execute() error {
 			{
 				Modify: HelloWorld{
 					Runner:   hwd.Runner,
-					Topology: &topoMap,
+					Topology: &topoSimplest,
 				},
 			},
 		},
@@ -69,29 +69,22 @@ type HelloWorldN struct {
 //
 // To use the auto tearDown, make sure to populate the Runner
 type HelloWorld struct {
-	Runner   *frame2.Run // Required for autoTeardown and step logging
-	Topology *topology.Basic
+	Runner       *frame2.Run // Required for autoTeardown and step logging
+	Topology     *topology.Basic
+	AutoTearDown bool
 }
 
 func (hw HelloWorld) Execute() error {
 	topo := topology.TopologyBuild{
 		Runner:       hw.Runner,
 		Topology:     hw.Topology,
-		AutoTearDown: true,
+		AutoTearDown: hw.AutoTearDown,
 	}
 
 	execute := frame2.Phase{
 		Runner: hw.Runner,
 		MainSteps: []frame2.Step{
 			{
-				Modify: execute.Function{
-					Fn: func() error {
-						tm, err := (*hw.Topology).GetTopologyMap()
-						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
-						return nil
-					},
-				},
-			}, {
 				Modify: &topo,
 			}, {
 				Modify: execute.Function{

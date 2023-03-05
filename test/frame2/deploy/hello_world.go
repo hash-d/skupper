@@ -21,21 +21,14 @@ type HelloWorld struct {
 // pods and validate they are available
 func (hw HelloWorld) Execute() error {
 
-	phase := frame2.Phase{
-		Runner: hw.Runner,
-		Setup: []frame2.Step{
-			{
-				Modify: *hw.Topology,
-			},
-		},
-	}
-	err := phase.Run()
-	if err != nil {
-		return fmt.Errorf("deploy.HelloWorld: failed to execute topology: %w", err)
-	}
-
 	pub, err := (*hw.Topology).Get(topology.Public, 1)
+	if err != nil {
+		return fmt.Errorf("failed to get public-1")
+	}
 	prv, err := (*hw.Topology).Get(topology.Private, 1)
+	if err != nil {
+		return fmt.Errorf("failed to get private-1")
+	}
 
 	frontend, _ := k8s.NewDeployment("hello-world-frontend", pub.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-frontend",
