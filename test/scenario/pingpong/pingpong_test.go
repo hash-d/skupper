@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/frame2/composite"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
 	"github.com/skupperproject/skupper/test/frame2/environment"
 	"github.com/skupperproject/skupper/test/frame2/execute"
@@ -120,92 +121,62 @@ func (m *MoveToRight) Execute() error {
 		Runner: m.Runner,
 		MainSteps: []frame2.Step{
 			{
-				Doc: "Deploy new HelloWorld Frontend",
-				Modify: &deploy.HelloWorldFrontend{
-					Target: rightFront.GetPromise(),
+				Doc: "Move frontend from left to right",
+				Modify: &composite.Migrate{
+					From:     leftFront,
+					To:       rightFront,
+					LinkTo:   []*base.ClusterContext{},
+					LinkFrom: []*base.ClusterContext{leftBack, vertex},
+					DeploySteps: []frame2.Step{
+						{
+							Doc: "Deploy new HelloWorld Frontend",
+							Modify: &deploy.HelloWorldFrontend{
+								Target: rightFront.GetPromise(),
+							},
+						},
+					},
+					UndeploySteps: []frame2.Step{
+						{
+							Doc: "Remove the application from the old frontend namespace",
+							Modify: &execute.K8SUndeploy{
+								Name:      "hello-world-frontend",
+								Namespace: leftFront.GetPromise(),
+								Wait:      2 * time.Minute,
+							},
+						},
+					},
 				},
 			}, {
-				Doc: "Install Skupper on new frontend namespace",
-				Modify: execute.SkupperInstallSimple{
-					Namespace: rightFront.GetPromise(),
+				Doc: "Move backend from left to right",
+				Modify: &composite.Migrate{
+					From:     leftBack,
+					To:       rightBack,
+					LinkTo:   []*base.ClusterContext{rightFront},
+					LinkFrom: []*base.ClusterContext{},
+					DeploySteps: []frame2.Step{
+						{
+							Doc: "Deploy new HelloWorld Backend",
+							Modify: &deploy.HelloWorldBackend{
+								Target: rightBack.GetPromise(),
+							},
+						},
+					},
+					UndeploySteps: []frame2.Step{
+						{
+							Doc: "Remove the application from the old backend namespace",
+							Modify: &execute.K8SUndeploy{
+								Name:      "hello-world-backend",
+								Namespace: leftBack.GetPromise(),
+								Wait:      2 * time.Minute,
+							},
+						},
+					},
 				},
-			}, {
-				Doc: "connect new frontend namespace to existing backend namespace",
-				Modify: execute.SkupperConnect{
-					Name:       "left-back-to-right-front",
-					From:       leftBack.GetPromise(),
-					To:         rightFront.GetPromise(),
-					RunnerBase: runner,
-				},
-			}, {
-				Doc: "connect the vertex to the new frontend namespace",
-				Modify: execute.SkupperConnect{
-					Name:       "vertex-to-right-front",
-					From:       vertex.GetPromise(),
-					To:         rightFront.GetPromise(),
-					RunnerBase: runner,
-				},
-			}, {
-				Doc: "remove skupper from the old frontend namespace",
-				Modify: &execute.SkupperDelete{
-					Namespace: leftFront.GetPromise(),
-				},
-			}, {
-				Doc: "Remove the application from the old frontend namespace",
-				Modify: &execute.K8SUndeploy{
-					Name:      "hello-world-frontend",
-					Namespace: leftFront.GetPromise(),
-					Wait:      2 * time.Minute,
-				},
-				// Add step K8SCheckNamespaceIsEmpty.  Check for deployments,
-				// secrets, configmaps, services, etc
-			}, {
-				Doc: "Deploy new HelloWorld Backend",
-				Modify: &deploy.HelloWorldBackend{
-					Target: rightBack.GetPromise(),
-				},
-			}, {
-				Doc: "Install Skupper on new backend namespace",
-				Modify: execute.SkupperInstallSimple{
-					Namespace: rightBack.GetPromise(),
-				},
-			}, {
-				Doc: "connect brand new backend namespace to new frontend namespace",
-				Modify: execute.SkupperConnect{
-					Name:       "left-back-to-right-front",
-					From:       rightBack.GetPromise(),
-					To:         rightFront.GetPromise(),
-					RunnerBase: runner,
-				},
-			}, {
-				Doc: "remove skupper from the old backend namespace",
-				Modify: &execute.SkupperDelete{
-					Namespace: leftBack.GetPromise(),
-				},
-			}, {
-				Doc: "Remove the application from the old backend namespace",
-				Modify: &execute.K8SUndeploy{
-					Name:      "hello-world-backend",
-					Namespace: leftBack.GetPromise(),
-					Wait:      2 * time.Minute,
-				},
-			}, {},
+			},
 		},
 	}
 
 	p.Run()
 
 	return nil
-}
-
-type MigrationStep struct {
-	SourceNamespace       *base.ClusterContext
-	TargetNamespace       *base.ClusterContext
-	ApplicationDeployment []frame2.Step
-	ApplicationUndeploy   []frame2.Step
-	ConnectTo             []*base.ClusterContext
-	ConnectFrom           []*base.ClusterContext
-
-	// Runs at least after deploy and after undeploy
-	ApplicationTest frame2.Step
 }
