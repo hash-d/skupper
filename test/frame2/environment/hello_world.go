@@ -1,11 +1,8 @@
 package environment
 
 import (
-	"log"
-
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
-	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/utils/base"
@@ -87,24 +84,8 @@ func (hw HelloWorld) Execute() error {
 			{
 				Modify: &topo,
 			}, {
-				Modify: execute.Function{
-					Fn: func() error {
-						tm, err := (*hw.Topology).GetTopologyMap()
-						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
-						return nil
-					},
-				},
-			}, {
 				Modify: deploy.HelloWorld{
 					Topology: hw.Topology,
-				},
-			}, {
-				Modify: execute.Function{
-					Fn: func() error {
-						tm, err := (*hw.Topology).GetTopologyMap()
-						log.Printf("topo: %+v\nTopology: %+v (%+v)", topo, tm, err)
-						return nil
-					},
 				},
 			},
 		},

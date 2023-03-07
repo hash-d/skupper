@@ -62,13 +62,13 @@ type TwoBranched interface {
 	Basic
 
 	// Same as Basic.Get(), but specifically on the left branch
-	GetLeft(kind ClusterType, number int) (base.ClusterContext, error)
+	GetLeft(kind ClusterType, number int) (*base.ClusterContext, error)
 
 	// Same as Basic.Get(), but specifically on the right branch
-	GetRight(kind ClusterType, number int) (base.ClusterContext, error)
+	GetRight(kind ClusterType, number int) (*base.ClusterContext, error)
 
 	// Get the ClusterContext that connects the two branches
-	GetVertex(kind ClusterType, number int) (base.ClusterContext, error)
+	GetVertex() (*base.ClusterContext, error)
 }
 
 // The type of cluster:
@@ -91,12 +91,17 @@ const (
 // A TopologyItem represents a skupper instalation on a namespace.
 // The connections are outgoing links to other TopologyItems (or:
 // to other Skupper installations)
+//
+// Once a TopologyItem has been realized by running its TopologyMap,
+// the respective ClusterContext will be assigned
 type TopologyItem struct {
-	Type        ClusterType
-	Connections []*TopologyItem
-	//SkipNamespaceCreation
-	//SkipSkupperDeploy bool // TODO
-	//SkipApplicationDeploy
+	Type                  ClusterType
+	Connections           []*TopologyItem
+	SkipNamespaceCreation bool
+	SkipSkupperDeploy     bool
+	//SkipApplicationDeploy bool TODO
+
+	ClusterContext *base.ClusterContext
 }
 
 // TopologyMap receives a list of TopologyItem that describe the topology.
@@ -195,6 +200,7 @@ func (tm *TopologyMap) Execute() error {
 			}
 			tm.Public = append(tm.Public, newContext)
 			tm.GeneratedMap[item] = newContext
+			item.ClusterContext = newContext
 		case Private:
 			countPrivate++
 			newContext, err := tm.TestRunnerBase.GetPrivateContext(countPrivate)
@@ -203,6 +209,7 @@ func (tm *TopologyMap) Execute() error {
 			}
 			tm.Private = append(tm.Private, newContext)
 			tm.GeneratedMap[item] = newContext
+			item.ClusterContext = newContext
 		default:
 			return errors.New("TopologyMap: Only Public and Private implemented")
 		}
@@ -267,11 +274,10 @@ func (t *TopologyBuild) Execute() error {
 		},
 	}
 	buildTopologyMap.Run()
+	log.Printf("Generated TopologyMap: %+v", tm)
 
 	log.Printf("Creating namespaces and installing Skupper")
-	// TODO.  Change the range on contexts by a range on topoItems, so that they can
-	// be configured for namespace, skupper or application setup
-	for _, context := range append(tm.Private, tm.Public...) {
+	for topoItem, context := range tm.GeneratedMap {
 		cc := context.GetPromise()
 
 		createAndInstall := frame2.Phase{
@@ -282,15 +288,16 @@ func (t *TopologyBuild) Execute() error {
 						Namespace:    *cc,
 						AutoTearDown: t.AutoTearDown,
 					},
+					SkipWhen: topoItem.SkipNamespaceCreation,
 				}, {
 					Modify: execute.SkupperInstallSimple{
 						Namespace: cc,
 					},
+					SkipWhen: topoItem.SkipNamespaceCreation || topoItem.SkipSkupperDeploy,
 				},
 			},
 		}
 		createAndInstall.Execute()
-
 	}
 
 	connectSteps := frame2.Phase{
@@ -338,8 +345,14 @@ type TopologyConnect struct {
 func (tc TopologyConnect) Execute() error {
 
 	for from, ctx := range tc.TopologyMap.GeneratedMap {
+		if from.SkipNamespaceCreation || from.SkipSkupperDeploy {
+			continue
+		}
 		for _, to := range from.Connections {
 			pivot := tc.TopologyMap.GeneratedMap[to]
+			if to.SkipNamespaceCreation || to.SkipSkupperDeploy {
+				continue
+			}
 			connName := fmt.Sprintf("%v-to-%v", ctx.Namespace, pivot.Namespace)
 			log.Printf("TopologyConnect creating connection %v", connName)
 			err := execute.SkupperConnect{

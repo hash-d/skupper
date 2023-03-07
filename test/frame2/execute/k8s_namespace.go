@@ -20,6 +20,8 @@ func (trcn TestRunnerCreateNamespace) Execute() error {
 		return fmt.Errorf("TestRunnerCreateNamespace failed to create namespace from promise: %w", err)
 	}
 
+	log.Printf("Creating namespace %v", cluster.Namespace)
+
 	err = cluster.CreateNamespace()
 	if err != nil {
 		return fmt.Errorf(

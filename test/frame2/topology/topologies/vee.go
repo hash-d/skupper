@@ -1,8 +1,6 @@
 package topologies
 
 import (
-	"fmt"
-
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
@@ -24,6 +22,9 @@ type V struct {
 	EmptyRight bool // If set, do not deploy Skupper or applications on the right branch
 	VertexType topology.ClusterType
 
+	*contextHolder
+	vertex *topology.TopologyItem
+
 	//For the future
 	// VertexConnectionClusterType // whether Vertex should connect to a pub or private cluster
 	// Invert right // inverts the selection above for the right branch
@@ -43,15 +44,17 @@ func (v *V) Execute() error {
 		},
 	}
 	pub2 := &topology.TopologyItem{
-		Type: topology.Public,
+		SkipSkupperDeploy: true,
+		Type:              topology.Public,
 	}
 	prv2 := &topology.TopologyItem{
-		Type: topology.Private,
+		SkipSkupperDeploy: true,
+		Type:              topology.Private,
 		Connections: []*topology.TopologyItem{
 			pub2,
 		},
 	}
-	other := &topology.TopologyItem{
+	v.vertex = &topology.TopologyItem{
 		Type: topology.Public,
 		Connections: []*topology.TopologyItem{
 			pub1,
@@ -64,7 +67,7 @@ func (v *V) Execute() error {
 		prv1,
 		pub2,
 		prv2,
-		other,
+		v.vertex,
 	}
 
 	v.Return = &topology.TopologyMap{
@@ -73,66 +76,37 @@ func (v *V) Execute() error {
 		Map:            topoMap,
 	}
 
+	v.contextHolder = &contextHolder{TopologyMap: v.Return}
+
 	return nil
 }
 
-// Return a ClusterContext of the given type and number.
-//
-// Negative numbers count from the end.  So, Get for -1 will return
-// the clusterContext with the greatest number of that type.
-//
-// Attention that for some types of topologies (suc as TwoBranched)
-// only part of the clustercontexts may be considered (for example,
-// only the left branch)
-//
-// The number divided against number of contexts of that type on
-// the topology, and the remainder will be used.  That allows for
-// tests that usually run with several namespace to run also with
-// a smaller number.  For example, on a cluster with 4 private
-// cluster, a request for number 6 will actually return number 2
-func (v *V) Get(kind topology.ClusterType, number int) (*base.ClusterContext, error) {
-	if v.Return == nil {
-		return nil, fmt.Errorf("topology has not yet been run")
+// Same as Basic.Get(), but specifically on the left branch
+func (v *V) GetLeft(kind topology.ClusterType, number int) (*base.ClusterContext, error) {
+	all := v.contextHolder.GetAll(kind)
+	max := len(all)
+	if v.vertex.Type == kind {
+		max -= 1
 	}
-	kindList := v.GetAll(kind)
-	// TODO: implement mod logic, implement negative logic
-	// TODO: this should all probably move to a add-on struct
 	target := number - 1
-	return kindList[target], nil
+	index := (target % (max / 2)) * 2
+	return all[index], nil
+
 }
 
-// This is the same as Get, but it will fail if the number is higher
-// than what the cluster provides.  Use this only if the test requires
-// a specific minimum number of ClusterContexts
-func (v *V) GetStrict(kind topology.ClusterType, number int) (base.ClusterContext, error) {
-	panic("not implemented") // TODO: Implement
-}
-
-// Get all clusterContexts of a certain type.  Note this be filtered
-// depending on the topology
-func (v *V) GetAll(kind topology.ClusterType) []*base.ClusterContext {
-	switch kind {
-	case topology.Public:
-		return v.Return.Public
-	case topology.Private:
-		return v.Return.Private
+// Same as Basic.Get(), but specifically on the right branch
+func (v *V) GetRight(kind topology.ClusterType, number int) (*base.ClusterContext, error) {
+	all := v.contextHolder.GetAll(kind)
+	max := len(all)
+	if v.vertex.Type == kind {
+		max -= 1
 	}
-	panic("Only public and private implemented")
+	target := number - 1
+	index := (target%(max/2))*2 + 1
+	return all[index], nil
 }
 
-// Same as above, but unfiltered
-func (v *V) GetAllStrict(kind topology.ClusterType) []base.ClusterContext {
-	panic("not implemented") // TODO: Implement
-}
-
-// Get a list with all clusterContexts, regardless of type or role
-func (v *V) ListAll() []base.ClusterContext {
-	panic("not implemented") // TODO: Implement
-}
-
-func (v *V) GetTopologyMap() (*topology.TopologyMap, error) {
-	if v.Return == nil {
-		return nil, fmt.Errorf("topologyMap is nil; not yet run?")
-	}
-	return v.Return, nil
+// Get the ClusterContext that connects the two branches
+func (v *V) GetVertex() (*base.ClusterContext, error) {
+	return v.vertex.ClusterContext, nil
 }

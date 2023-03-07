@@ -32,6 +32,12 @@ type Phase struct {
 func processStep(t *testing.T, step Step, id string) error {
 	// TODO: replace [R] with own logger with Prefix?
 	var err error
+
+	if step.SkipWhen {
+		log.Printf("[R] %v step skipped", id)
+		return nil
+	}
+
 	if step.Name != "" {
 		// For a named test, run or fail, we work the same.  It's up to t to
 		// mark it as failed

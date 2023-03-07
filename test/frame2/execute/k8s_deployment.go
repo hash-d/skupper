@@ -76,11 +76,10 @@ func (d *K8SDeploymentOpts) Execute() error {
 
 // Executes a fully specified K8S deployment
 //
-// See K8SDeploymentOpts for a simpler interface
+// # See K8SDeploymentOpts for a simpler interface
 //
 // For an example/template on creating a *v1.Deployment by hand, check
 // test/utils/base/cluster_context.go (k8s.NewDeployment)
-//
 type K8SDeployment struct {
 	Namespace  *base.ClusterContextPromise
 	Deployment *appsv1.Deployment
@@ -155,4 +154,49 @@ func (kda K8SDeploymentAnnotate) Execute() error {
 	_, err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.Namespace).Update(deploy)
 	return err
 
+}
+
+type K8SUndeploy struct {
+	Name      string
+	Namespace *base.ClusterContextPromise
+	Wait      time.Duration // Waits for the deployment to be gone.  Otherwise, returns as soon as the delete instruction has been issued.  If the wait lapses, return an error.
+
+	Ctx context.Context
+}
+
+func (k *K8SUndeploy) Execute() error {
+	ctx := k.Ctx
+	if k.Ctx == nil {
+		ctx = context.Background()
+	}
+	cluster, err := k.Namespace.Satisfy()
+	if err != nil {
+		return err
+	}
+	err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Delete(k.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	if k.Wait == 0 {
+		return nil
+	}
+	retry := frame2.Retry{
+		Options: frame2.RetryOptions{
+			Ctx:        ctx,
+			Timeout:    k.Wait,
+			KeepTrying: true,
+		},
+		Fn: func() error {
+			_, err := cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Get(k.Name, metav1.GetOptions{})
+			if err == nil {
+				return fmt.Errorf("deployment %v still available after deletion", k.Name)
+			}
+			return nil
+		},
+	}
+	_, err = retry.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }

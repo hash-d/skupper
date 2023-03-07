@@ -12,6 +12,7 @@ import (
 	"github.com/skupperproject/skupper/test/utils/constants"
 )
 
+// For a defaults alternative, check SkupperInstallSimple
 type SkupperInstall struct {
 	Namespace  *base.ClusterContextPromise
 	RouterSpec types.SiteConfigSpec

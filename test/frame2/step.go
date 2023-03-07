@@ -33,6 +33,7 @@ type Step struct {
 	// until an error is returned (but there is no control on which kind
 	// of error that will be)
 	ExpectError bool
+	SkipWhen    bool
 }
 
 func (s Step) Logf(format string, v ...interface{}) {
