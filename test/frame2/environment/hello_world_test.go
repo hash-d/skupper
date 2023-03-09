@@ -24,7 +24,6 @@ func TestHelloWorld(t *testing.T) {
 
 	prepareTopology := frame2.Phase{
 		Runner: &runner,
-		Name:   "TestHelloWorld",
 		Setup: []frame2.Step{
 			{
 				Modify: topologyN,
@@ -39,7 +38,6 @@ func TestHelloWorld(t *testing.T) {
 
 	deployApp := frame2.Phase{
 		Runner: &runner,
-		Name:   "TestHelloWorld",
 		Setup: []frame2.Step{
 			{
 				Modify: HelloWorld{

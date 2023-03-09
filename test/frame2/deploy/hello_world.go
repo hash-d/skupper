@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/skupperproject/skupper/pkg/kube"
@@ -10,6 +11,7 @@ import (
 	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/k8s"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Deploys HelloWorld; frontend on pub1, backend on prv1
@@ -65,9 +67,11 @@ type HelloWorldBackend struct {
 	Runner         *frame2.Run
 	Target         *base.ClusterContextPromise
 	CreateServices bool
+	Ctx            context.Context
 }
 
 func (h *HelloWorldBackend) Execute() error {
+	ctx := frame2.ContextOrDefault(h.Ctx)
 	target, err := h.Target.Satisfy()
 	if err != nil {
 		return fmt.Errorf("HelloWorldBackend: failed to satisfy target: %w", err)
@@ -79,7 +83,7 @@ func (h *HelloWorldBackend) Execute() error {
 	})
 
 	// Creating deployments
-	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(backend); err != nil {
+	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(ctx, backend, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
@@ -95,9 +99,12 @@ type HelloWorldFrontend struct {
 	Runner         *frame2.Run
 	Target         *base.ClusterContextPromise
 	CreateServices bool
+
+	Ctx context.Context
 }
 
 func (h *HelloWorldFrontend) Execute() error {
+	ctx := frame2.ContextOrDefault(h.Ctx)
 	target, err := h.Target.Satisfy()
 	if err != nil {
 		return fmt.Errorf("HelloWorldFrontend: failed to satisfy target: %w", err)
@@ -111,7 +118,7 @@ func (h *HelloWorldFrontend) Execute() error {
 	if err != nil {
 		return fmt.Errorf("HelloWorldFrontend: failed to deploy: %w", err)
 	}
-	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(d); err != nil {
+	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(ctx, d, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	if _, err := kube.WaitDeploymentReady("hello-world-frontend", target.Namespace, target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {

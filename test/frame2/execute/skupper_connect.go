@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/skupperproject/skupper/api/types"
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
@@ -24,6 +25,8 @@ type SkupperConnect struct {
 }
 
 func (sc SkupperConnect) Execute() error {
+	ctx := frame2.ContextOrDefault(sc.Ctx)
+
 	log.Printf("execute.SkupperConnect")
 	var err error
 
@@ -37,8 +40,6 @@ func (sc SkupperConnect) Execute() error {
 	}
 
 	log.Printf("connecting %v to %v", fromCluster.Namespace, ToCluster.Namespace)
-
-	ctx := sc.Ctx
 
 	var r base.ClusterTestRunnerBase
 	if sc.RunnerBase != nil {

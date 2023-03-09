@@ -9,7 +9,8 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/k8s"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type SegmentSetup struct {
@@ -87,19 +88,21 @@ func deployResources(pub *base.ClusterContext, prv *base.ClusterContext) error {
 	frontend, _ := k8s.NewDeployment("hello-world-frontend", pub.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-frontend",
 		Labels:        map[string]string{"app": "hello-world-frontend"},
-		RestartPolicy: v1.RestartPolicyAlways,
+		RestartPolicy: corev1.RestartPolicyAlways,
 	})
 	backend, _ := k8s.NewDeployment("hello-world-backend", prv.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-backend",
 		Labels:        map[string]string{"app": "hello-world-backend"},
-		RestartPolicy: v1.RestartPolicyAlways,
+		RestartPolicy: corev1.RestartPolicyAlways,
 	})
 
+	ctx := context.Background()
+
 	// Creating deployments
-	if _, err := pub.VanClient.KubeClient.AppsV1().Deployments(pub.Namespace).Create(frontend); err != nil {
+	if _, err := pub.VanClient.KubeClient.AppsV1().Deployments(pub.Namespace).Create(ctx, frontend, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	if _, err := prv.VanClient.KubeClient.AppsV1().Deployments(prv.Namespace).Create(backend); err != nil {
+	if _, err := prv.VanClient.KubeClient.AppsV1().Deployments(prv.Namespace).Create(ctx, backend, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
