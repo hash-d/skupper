@@ -13,6 +13,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/tester"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/frame2/walk"
 	"github.com/skupperproject/skupper/test/utils/base"
@@ -29,7 +30,8 @@ func Test311(t *testing.T) {
 		Allow: 120,
 	}
 
-	topologyN := topology.N{
+	var topologyN topology.Basic
+	topologyN = &topologies.N{
 		Name:           "test-311",
 		TestRunnerBase: runner,
 	}
@@ -143,8 +145,8 @@ func Test311(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: environment.HelloWorld{
-					TopologyMap: topologyN.Return,
-					Runner:      f2runner,
+					Topology: &topologyN,
+					Runner:   f2runner,
 				},
 				// Move the ones below as an option to HelloWorld
 			}, {

@@ -7,6 +7,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/frame2/validates"
 	"github.com/skupperproject/skupper/test/utils/base"
@@ -39,7 +40,8 @@ func TestIssue832(t *testing.T) {
 
 	// These two phases should be combined into a single one,
 	// with a composite Executor
-	topoMap := &topology.Simplest{
+	var topoSimplest topology.Basic
+	topoSimplest = &topologies.Simplest{
 		Name:           "issue-832",
 		TestRunnerBase: &baseRunner,
 	}
@@ -49,7 +51,7 @@ func TestIssue832(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Doc:    "Create the topology map",
-				Modify: topoMap,
+				Modify: topoSimplest,
 			},
 		},
 	}
@@ -57,7 +59,7 @@ func TestIssue832(t *testing.T) {
 
 	topo := &topology.TopologyBuild{
 		Runner:       runner,
-		Topology:     topoMap.Return,
+		Topology:     &topoSimplest,
 		AutoTearDown: true,
 	}
 

@@ -122,12 +122,13 @@ type K8SServiceAnnotate struct {
 }
 
 func (ksa K8SServiceAnnotate) Execute() error {
+	ctx := frame2.ContextOrDefault(ksa.Ctx)
 	cluster, err := ksa.Namespace.Satisfy()
 	if err != nil {
 		return err
 	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksa.Ctx, ksa.Name, metav1.GetOptions{})
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ctx, ksa.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (ksa K8SServiceAnnotate) Execute() error {
 	for k, v := range ksa.Annotations {
 		svc.Annotations[k] = v
 	}
-	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ksa.Ctx, svc, v1.UpdateOptions{})
+	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ctx, svc, v1.UpdateOptions{})
 	return err
 
 }
@@ -153,12 +154,13 @@ type K8SServiceRemoveAnnotation struct {
 }
 
 func (ksr K8SServiceRemoveAnnotation) Execute() error {
+	ctx := frame2.ContextOrDefault(ksr.Ctx)
 	cluster, err := ksr.Namespace.Satisfy()
 	if err != nil {
 		return err
 	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ksr.Ctx, ksr.Name, metav1.GetOptions{})
+	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ctx, ksr.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -172,7 +174,7 @@ func (ksr K8SServiceRemoveAnnotation) Execute() error {
 	for _, k := range ksr.Annotations {
 		delete(svc.Annotations, k)
 	}
-	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ksr.Ctx, svc, v1.UpdateOptions{})
+	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ctx, svc, v1.UpdateOptions{})
 	return err
 
 }
@@ -188,8 +190,9 @@ type K8SServiceGet struct {
 }
 
 func (kg *K8SServiceGet) Validate() error {
+	ctx := frame2.ContextOrDefault(kg.Ctx)
 	cluster, err := kg.Namespace.Satisfy()
-	kg.Service, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(kg.Ctx, kg.Name, metav1.GetOptions{})
+	kg.Service, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(ctx, kg.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

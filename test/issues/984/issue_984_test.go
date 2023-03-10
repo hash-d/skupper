@@ -10,6 +10,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2/environment"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
@@ -18,7 +19,8 @@ func Test984(t *testing.T) {
 	runner := frame2.Run{T: t}
 	runnerBase := base.ClusterTestRunnerBase{}
 
-	topologySimple := topology.Simplest{
+	var topologySimple topology.Basic
+	topologySimple = &topologies.Simplest{
 		Name:           "test-984",
 		TestRunnerBase: &runnerBase,
 	}
@@ -27,7 +29,7 @@ func Test984(t *testing.T) {
 		Doc: "Create the o-o topology map",
 		Setup: []frame2.Step{
 			{
-				Modify: &topologySimple,
+				Modify: topologySimple,
 			},
 		},
 	}
@@ -39,8 +41,8 @@ func Test984(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: environment.HelloWorld{
-					Runner:      &runner,
-					TopologyMap: topologySimple.Return,
+					Runner:   &runner,
+					Topology: &topologySimple,
 				},
 			},
 		},

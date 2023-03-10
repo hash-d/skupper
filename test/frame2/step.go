@@ -33,7 +33,8 @@ type Step struct {
 	// until an error is returned (but there is no control on which kind
 	// of error that will be)
 	ExpectError bool
-	SkipWhen    bool
+	// TODO: ExpectIs, ExpectAs; use errors.Is, errors.As against a list of expected errors?
+	SkipWhen bool
 }
 
 func (s Step) Logf(format string, v ...interface{}) {

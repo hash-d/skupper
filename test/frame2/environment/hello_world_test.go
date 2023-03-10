@@ -41,8 +41,9 @@ func TestHelloWorld(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: HelloWorld{
-					Runner:   &runner,
-					Topology: &topologyN,
+					Runner:       &runner,
+					Topology:     &topologyN,
+					AutoTearDown: true,
 				},
 			},
 		},
