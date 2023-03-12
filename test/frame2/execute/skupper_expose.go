@@ -15,7 +15,7 @@ import (
 // the CLI, create annotations, use Ansible or site controller,
 // per configuration.
 type SkupperExpose struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Type      string
 	Name      string
 
@@ -122,7 +122,7 @@ func (se SkupperExpose) Teardown() frame2.Executor {
 }
 
 type SkupperUnexpose struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Type      string
 	Name      string
 	Address   string

@@ -8,7 +8,7 @@ import (
 )
 
 type SkupperDelete struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 
 	Context context.Context
 }
@@ -21,17 +21,12 @@ func (s *SkupperDelete) Execute() error {
 		ctx = context.Background()
 	}
 
-	cluster, err := s.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("SkupperDelete failed to satisfy namespace promise: %w", err)
-	}
-
-	err = cluster.VanClient.SiteConfigRemove(ctx)
+	err := s.Namespace.VanClient.SiteConfigRemove(ctx)
 	if err != nil {
 		return fmt.Errorf("SkupperDelete failed to remove SiteConfig: %w", err)
 	}
 
-	err = cluster.VanClient.RouterRemove(ctx)
+	err = s.Namespace.VanClient.RouterRemove(ctx)
 	if err != nil {
 		return fmt.Errorf("SkupperDelete failed to remove Router: %w", err)
 	}

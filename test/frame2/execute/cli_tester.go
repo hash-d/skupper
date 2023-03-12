@@ -11,16 +11,12 @@ import (
 // This is a wrapper to the types available on test/utils/skupper/cli/
 type CliTester struct {
 	Tester  cli.SkupperCommandTester
-	Cluster base.ClusterContextPromise
+	Cluster base.ClusterContext
 }
 
 func (c CliTester) Execute() error {
 	log.Printf("CliTester: %+#v", c.Tester)
-	cluster, err := c.Cluster.Satisfy()
-	if err != nil {
-		return err
-	}
-	stdout, stderr, err := c.Tester.Run(types.PlatformKubernetes, cluster)
+	stdout, stderr, err := c.Tester.Run(types.PlatformKubernetes, &c.Cluster)
 
 	log.Printf("CliTester result: %v", err)
 	log.Printf("CliTester:\nSTDOUT:\n%v\nSTDERR:\n%v", stdout, stderr)

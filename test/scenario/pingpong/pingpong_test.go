@@ -72,7 +72,7 @@ func TestPingPong(t *testing.T) {
 			{
 				Modify: &execute.CliSkupper{
 					Args:           []string{"network", "status"},
-					ClusterContext: vertex.GetPromise(),
+					ClusterContext: vertex,
 				},
 			}, {
 				Modify: &MoveToRight{
@@ -123,6 +123,7 @@ func (m *MoveToRight) Execute() error {
 			{
 				Doc: "Move frontend from left to right",
 				Modify: &composite.Migrate{
+					Runner:   m.Runner,
 					From:     leftFront,
 					To:       rightFront,
 					LinkTo:   []*base.ClusterContext{},
@@ -131,7 +132,7 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Frontend",
 							Modify: &deploy.HelloWorldFrontend{
-								Target: rightFront.GetPromise(),
+								Target: rightFront,
 							},
 						},
 					},
@@ -140,7 +141,7 @@ func (m *MoveToRight) Execute() error {
 							Doc: "Remove the application from the old frontend namespace",
 							Modify: &execute.K8SUndeploy{
 								Name:      "hello-world-frontend",
-								Namespace: leftFront.GetPromise(),
+								Namespace: leftFront,
 								Wait:      2 * time.Minute,
 							},
 						},
@@ -157,7 +158,7 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
-								Target: rightBack.GetPromise(),
+								Target: rightBack,
 							},
 						},
 					},
@@ -166,7 +167,7 @@ func (m *MoveToRight) Execute() error {
 							Doc: "Remove the application from the old backend namespace",
 							Modify: &execute.K8SUndeploy{
 								Name:      "hello-world-backend",
-								Namespace: leftBack.GetPromise(),
+								Namespace: leftBack,
 								Wait:      2 * time.Minute,
 							},
 						},

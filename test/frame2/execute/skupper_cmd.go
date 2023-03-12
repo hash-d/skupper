@@ -16,7 +16,7 @@ type CliSkupper struct {
 	Namespace string
 
 	// Secondary way to get the namespace, used only if Namespace is empty
-	ClusterContext *base.ClusterContextPromise
+	ClusterContext *base.ClusterContext
 
 	// You can configure any aspects of the command configuration.  However,
 	// the fields Command, Args and Shell from the exec.Cmd element will be
@@ -32,11 +32,7 @@ func (cs *CliSkupper) Execute() error {
 		baseArgs = append(baseArgs, "--namespace", cs.Namespace)
 	} else {
 		if cs.ClusterContext != nil {
-			namespace, err := cs.ClusterContext.Satisfy()
-			if err != nil {
-				return fmt.Errorf("CliSkupper failed getting the namespace: %w", err)
-			}
-			baseArgs = append(baseArgs, "--namespace", namespace.Namespace)
+			baseArgs = append(baseArgs, "--namespace", cs.ClusterContext.Namespace)
 		}
 	}
 	cmd := cs.Cmd

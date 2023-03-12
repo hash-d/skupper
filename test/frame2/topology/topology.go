@@ -278,20 +278,19 @@ func (t *TopologyBuild) Execute() error {
 
 	log.Printf("Creating namespaces and installing Skupper")
 	for topoItem, context := range tm.GeneratedMap {
-		cc := context.GetPromise()
 
 		createAndInstall := frame2.Phase{
 			Runner: t.Runner,
 			Setup: []frame2.Step{
 				{
 					Modify: execute.TestRunnerCreateNamespace{
-						Namespace:    *cc,
+						Namespace:    context,
 						AutoTearDown: t.AutoTearDown,
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation,
 				}, {
 					Modify: execute.SkupperInstallSimple{
-						Namespace: cc,
+						Namespace: context,
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation || topoItem.SkipSkupperDeploy,
 				},
@@ -356,10 +355,9 @@ func (tc TopologyConnect) Execute() error {
 			connName := fmt.Sprintf("%v-to-%v", ctx.Namespace, pivot.Namespace)
 			log.Printf("TopologyConnect creating connection %v", connName)
 			err := execute.SkupperConnect{
-				Name:       connName,
-				From:       ctx.GetPromise(),
-				To:         pivot.GetPromise(),
-				RunnerBase: tc.TopologyMap.TestRunnerBase,
+				Name: connName,
+				From: ctx,
+				To:   pivot,
 			}.Execute()
 			if err != nil {
 				return fmt.Errorf("TopologyConnect failed: %w", err)

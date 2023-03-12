@@ -2,7 +2,6 @@ package execute
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 
 // Creates a Kubernetes service, with simplified configurations
 type K8SServiceCreate struct {
-	Namespace                *base.ClusterContextPromise
+	Namespace                *base.ClusterContext
 	Name                     string
 	Annotations              map[string]string
 	Labels                   map[string]string
@@ -58,8 +57,7 @@ func (ks K8SServiceCreate) Execute() error {
 	}
 
 	// Creating the new service
-	cluster, err := ks.Namespace.Satisfy()
-	svc, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Create(ctx, svc, v1.CreateOptions{})
+	svc, err := ks.Namespace.VanClient.KubeClient.CoreV1().Services(ks.Namespace.Namespace).Create(ctx, svc, v1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -71,7 +69,7 @@ func (ks K8SServiceCreate) Execute() error {
 				Timeout:    ks.Wait,
 			},
 			Fn: func() error {
-				_, retryErr := cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(ctx, ks.Name, metav1.GetOptions{})
+				_, retryErr := ks.Namespace.VanClient.KubeClient.CoreV1().Services(ks.Namespace.Namespace).Get(ctx, ks.Name, metav1.GetOptions{})
 				return retryErr
 			},
 		}.Run()
@@ -95,7 +93,7 @@ func (ks K8SServiceCreate) Teardown() frame2.Executor {
 }
 
 type K8SServiceDelete struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 
 	Ctx context.Context
@@ -103,18 +101,14 @@ type K8SServiceDelete struct {
 
 func (ksd K8SServiceDelete) Execute() error {
 	ctx := frame2.ContextOrDefault(ksd.Ctx)
-	cc, err := ksd.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy namespace promise: %w", err)
-	}
 
-	cc.VanClient.KubeClient.CoreV1().Services(cc.Namespace).Delete(ctx, ksd.Name, metav1.DeleteOptions{})
+	ksd.Namespace.VanClient.KubeClient.CoreV1().Services(ksd.Namespace.Namespace).Delete(ctx, ksd.Name, metav1.DeleteOptions{})
 
 	return nil
 }
 
 type K8SServiceAnnotate struct {
-	Namespace   *base.ClusterContextPromise
+	Namespace   *base.ClusterContext
 	Name        string
 	Annotations map[string]string
 
@@ -123,12 +117,8 @@ type K8SServiceAnnotate struct {
 
 func (ksa K8SServiceAnnotate) Execute() error {
 	ctx := frame2.ContextOrDefault(ksa.Ctx)
-	cluster, err := ksa.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ctx, ksa.Name, metav1.GetOptions{})
+	svc, err := ksa.Namespace.VanClient.KubeClient.CoreV1().Services(ksa.Namespace.VanClient.Namespace).Get(ctx, ksa.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -140,13 +130,13 @@ func (ksa K8SServiceAnnotate) Execute() error {
 	for k, v := range ksa.Annotations {
 		svc.Annotations[k] = v
 	}
-	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ctx, svc, v1.UpdateOptions{})
+	_, err = ksa.Namespace.VanClient.KubeClient.CoreV1().Services(ksa.Namespace.Namespace).Update(ctx, svc, v1.UpdateOptions{})
 	return err
 
 }
 
 type K8SServiceRemoveAnnotation struct {
-	Namespace   *base.ClusterContextPromise
+	Namespace   *base.ClusterContext
 	Name        string
 	Annotations []string
 
@@ -155,12 +145,8 @@ type K8SServiceRemoveAnnotation struct {
 
 func (ksr K8SServiceRemoveAnnotation) Execute() error {
 	ctx := frame2.ContextOrDefault(ksr.Ctx)
-	cluster, err := ksr.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 	// Retrieving service
-	svc, err := cluster.VanClient.KubeClient.CoreV1().Services(cluster.VanClient.Namespace).Get(ctx, ksr.Name, metav1.GetOptions{})
+	svc, err := ksr.Namespace.VanClient.KubeClient.CoreV1().Services(ksr.Namespace.VanClient.Namespace).Get(ctx, ksr.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -174,14 +160,14 @@ func (ksr K8SServiceRemoveAnnotation) Execute() error {
 	for _, k := range ksr.Annotations {
 		delete(svc.Annotations, k)
 	}
-	_, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Update(ctx, svc, v1.UpdateOptions{})
+	_, err = ksr.Namespace.VanClient.KubeClient.CoreV1().Services(ksr.Namespace.Namespace).Update(ctx, svc, v1.UpdateOptions{})
 	return err
 
 }
 
 // Retrieve a K8S Service by name and namespace
 type K8SServiceGet struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 	Ctx       context.Context
 
@@ -191,8 +177,8 @@ type K8SServiceGet struct {
 
 func (kg *K8SServiceGet) Validate() error {
 	ctx := frame2.ContextOrDefault(kg.Ctx)
-	cluster, err := kg.Namespace.Satisfy()
-	kg.Service, err = cluster.VanClient.KubeClient.CoreV1().Services(cluster.Namespace).Get(ctx, kg.Name, metav1.GetOptions{})
+	var err error
+	kg.Service, err = kg.Namespace.VanClient.KubeClient.CoreV1().Services(kg.Namespace.Namespace).Get(ctx, kg.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

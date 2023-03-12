@@ -260,7 +260,7 @@ func (s *InitTester) ValidateKubernetes(cluster *base.ClusterContext, stdout, st
 	//
 	// Validate ConfigSync
 	if err = (validate.Container{
-		Namespace:     cluster.GetPromise(),
+		Namespace:     cluster,
 		PodSelector:   validate.RouterSelector,
 		ExpectExactly: 1,
 		ContainerName: types.ConfigSyncContainerName,

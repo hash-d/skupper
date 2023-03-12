@@ -53,7 +53,7 @@ func (m *Migrate) Execute() error {
 			{
 				Doc: fmt.Sprintf("Install Skupper on new namespace %q", m.To.Namespace),
 				Modify: execute.SkupperInstallSimple{
-					Namespace: m.To.GetPromise(),
+					Namespace: m.To,
 				},
 			},
 		},
@@ -78,11 +78,11 @@ func (m *Migrate) Execute() error {
 
 	for _, l := range links {
 		linkSteps = append(linkSteps, frame2.Step{
-			Doc: fmt.Sprintf("connecting %v to %v", l.from, l.to),
+			Doc: fmt.Sprintf("connecting %v to %v", l.from.Namespace, l.to.Namespace),
 			Modify: execute.SkupperConnect{
-				Name: fmt.Sprintf("%v-to-%v", l.from, l.to),
-				From: l.from.GetPromise(),
-				To:   l.to.GetPromise(),
+				Name: fmt.Sprintf("%v-to-%v", l.from.Namespace, l.to.Namespace),
+				From: l.from,
+				To:   l.to,
 			},
 		})
 	}
@@ -102,7 +102,7 @@ func (m *Migrate) Execute() error {
 			{
 				Doc: "remove skupper from the old namespace",
 				Modify: &execute.SkupperDelete{
-					Namespace: m.From.GetPromise(),
+					Namespace: m.From,
 				},
 			},
 		},

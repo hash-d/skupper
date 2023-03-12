@@ -12,6 +12,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2/validates"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/k8s"
+	"gotest.tools/assert"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,53 +64,25 @@ func TestIssue832(t *testing.T) {
 		AutoTearDown: true,
 	}
 
-	// TODO: change this by something that's returned from topology.Topology
-	var pubPromise *base.ClusterContextPromise
-	var prvPromise *base.ClusterContextPromise
-
-	//	var pub *base.ClusterContext
-	var prv *base.ClusterContext
-
 	phase2 := frame2.Phase{
 		Runner: runner,
 		Setup: []frame2.Step{
 			{
 				Doc:    "Create the actual topology",
 				Modify: topo,
-			}, {
-				Doc: "Get the Promises",
-				Modify: execute.Function{
-					Fn: func() error {
-						pubPromise = baseRunner.GetContextPromise(false, 1)
-						prvPromise = baseRunner.GetContextPromise(true, 1)
-						return nil
-					},
-				},
-			}, {
-				Doc: "Get the prv reference",
-				Modify: execute.Function{
-					Fn: func() error {
-						var err error
-						prv, err = prvPromise.Satisfy()
-						return err
-					},
-				},
-			}, {
-				Doc: "Get the pub reference",
-				Modify: execute.Function{
-					Fn: func() error {
-						var err error
-						//pub, err = pubPromise.Satisfy()
-						return err
-					},
-				},
 			},
 		},
 	}
 	phase2.Run()
 
+	pub1, err := topoSimplest.Get(topology.Public, 1)
+	assert.Assert(t, err)
+
+	prv1, err := topoSimplest.Get(topology.Private, 1)
+	assert.Assert(t, err)
+
 	// Install dnsutils so we can check the published names
-	for _, target := range []*base.ClusterContextPromise{prvPromise, pubPromise} {
+	for _, target := range []*base.ClusterContext{prv1, pub1} {
 		// TODO move this to a Executor "DeployDNStools
 		//      also, good candidate for parallelism
 		deployDnsTooling := frame2.Phase{
@@ -157,7 +130,7 @@ func TestIssue832(t *testing.T) {
 						baseSf = apps.StatefulSet{
 							ObjectMeta: meta.ObjectMeta{
 								Name:      "backend",
-								Namespace: prv.Namespace,
+								Namespace: prv1.Namespace,
 								Labels:    labels,
 							},
 							Spec: apps.StatefulSetSpec{
@@ -220,7 +193,7 @@ func TestIssue832(t *testing.T) {
 			{
 				Doc: "Create a headless k8s service for the statefulset",
 				Modify: execute.K8SServiceCreate{
-					Namespace:    prvPromise,
+					Namespace:    prv1,
 					Name:         "backend",
 					Ports:        []int32{8080},
 					Labels:       labels,
@@ -233,7 +206,7 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Deploy a hello-world-backend server, with a readiness probe delayed to start only after 90 seconds",
 				Modify: &execute.K8SStatefulSet{
-					Namespace:    prvPromise,
+					Namespace:    prv1,
 					AutoTeardown: true,
 					StatefulSet:  &baseSf,
 				},
@@ -241,7 +214,7 @@ func TestIssue832(t *testing.T) {
 				Doc: "Expose the stateful set; expect the name to not be available for at least 60s",
 				Modify: execute.SkupperExpose{
 					Runner:                 runner,
-					Namespace:              prvPromise,
+					Namespace:              prv1,
 					Name:                   "backend",
 					Type:                   "statefulset",
 					Headless:               true,
@@ -251,11 +224,11 @@ func TestIssue832(t *testing.T) {
 				Validators: []frame2.Validator{
 					// This is failing; described as Finding 2 / Problem B on SKUPPER-310
 					validates.Nslookup{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
 					validates.Nslookup{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
 				},
@@ -268,11 +241,11 @@ func TestIssue832(t *testing.T) {
 				Doc: "After the initial 60s from the previous step, give at most 2m for the name to appear",
 				Validators: []frame2.Validator{
 					validates.Nslookup{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
 					validates.Nslookup{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
 				},
@@ -285,11 +258,11 @@ func TestIssue832(t *testing.T) {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
 					validate.Curl{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
 					validate.Curl{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
 				},
@@ -372,7 +345,7 @@ func TestIssue832(t *testing.T) {
 				Modify: execute.K8SServiceCreate{
 					// TODO add Runner to this guy
 					// Runner:    runner,
-					Namespace:                prvPromise,
+					Namespace:                prv1,
 					Name:                     "backend",
 					Ports:                    []int32{8080},
 					Labels:                   labels,
@@ -385,7 +358,7 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Deploy a hello-world-backend server, with a readiness probe delayed to start only after 90 seconds",
 				Modify: &execute.K8SStatefulSet{
-					Namespace:    prvPromise,
+					Namespace:    prv1,
 					StatefulSet:  &baseSf,
 					AutoTeardown: true,
 				},
@@ -393,7 +366,7 @@ func TestIssue832(t *testing.T) {
 				Doc: "Expose the stateful set via Skupper; expect the names to be almost immediatelly available",
 				Modify: execute.SkupperExpose{
 					Runner:                 runner,
-					Namespace:              prvPromise,
+					Namespace:              prv1,
 					Name:                   "backend",
 					Type:                   "statefulset",
 					Headless:               true,
@@ -403,11 +376,11 @@ func TestIssue832(t *testing.T) {
 				},
 				Validators: []frame2.Validator{
 					validates.Nslookup{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
 					validates.Nslookup{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
 				},
@@ -422,11 +395,11 @@ func TestIssue832(t *testing.T) {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
 					validate.Curl{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
 					validate.Curl{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
 				},
@@ -453,7 +426,7 @@ func TestIssue832(t *testing.T) {
 				Modify: execute.K8SServiceCreate{
 					// TODO add Runner to this guy
 					// Runner:    runner,
-					Namespace:                prvPromise,
+					Namespace:                prv1,
 					Name:                     "backend",
 					Ports:                    []int32{8080},
 					Labels:                   labels,
@@ -466,14 +439,14 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Deploy a hello-world-backend server, with a readiness probe delayed to start only after 90 seconds",
 				Modify: &execute.K8SStatefulSet{
-					Namespace:    prvPromise,
+					Namespace:    prv1,
 					StatefulSet:  &baseSf,
 					AutoTeardown: true,
 				},
 			}, {
 				Doc: "Create a new skupper service, named skupper-backend",
 				Modify: &execute.SkupperServiceCreate{
-					Namespace:    prvPromise,
+					Namespace:    prv1,
 					Name:         "skupper-backend",
 					Port:         []string{"8080"},
 					Runner:       runner,
@@ -483,7 +456,7 @@ func TestIssue832(t *testing.T) {
 				Doc: "Bind the stateful set via Skupper; expect the names to be almost immediatelly available",
 				Modify: execute.SkupperServiceBind{
 					Runner:                 runner,
-					Namespace:              prvPromise,
+					Namespace:              prv1,
 					Name:                   "skupper-backend",
 					TargetType:             "statefulset",
 					TargetName:             "backend",
@@ -492,11 +465,11 @@ func TestIssue832(t *testing.T) {
 				},
 				Validators: []frame2.Validator{
 					validates.Nslookup{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Name:      "skupper-backend-0.skupper-backend",
 					},
 					validates.Nslookup{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Name:      "skupper-backend-0.skupper-backend",
 					},
 				},
@@ -511,11 +484,11 @@ func TestIssue832(t *testing.T) {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
 					validate.Curl{
-						Namespace: prvPromise,
+						Namespace: prv1,
 						Url:       "http://skupper-backend-0.skupper-backend:8080/api/hello",
 					},
 					validate.Curl{
-						Namespace: pubPromise,
+						Namespace: pub1,
 						Url:       "http://skupper-backend-0.skupper-backend:8080/api/hello",
 					},
 				},

@@ -14,7 +14,7 @@ import (
 
 // For a defaults alternative, check SkupperInstallSimple
 type SkupperInstall struct {
-	Namespace  *base.ClusterContextPromise
+	Namespace  *base.ClusterContext
 	RouterSpec types.SiteConfigSpec
 	Ctx        context.Context
 	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
@@ -34,15 +34,11 @@ func (si SkupperInstall) Execute() error {
 		wait = types.DefaultTimeoutDuration * 2
 	}
 
-	cluster, err := si.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("SkupperInstall failed to satisfy namespace promise: %w", err)
-	}
-	publicSiteConfig, err := cluster.VanClient.SiteConfigCreate(ctx, si.RouterSpec)
+	publicSiteConfig, err := si.Namespace.VanClient.SiteConfigCreate(ctx, si.RouterSpec)
 	if err != nil {
 		return fmt.Errorf("SkupperInstall failed to create SiteConfig: %w", err)
 	}
-	err = cluster.VanClient.RouterCreate(ctx, *publicSiteConfig)
+	err = si.Namespace.VanClient.RouterCreate(ctx, *publicSiteConfig)
 	if err != nil {
 		return fmt.Errorf("SkupperInstall failed to create router: %w", err)
 	}
@@ -84,14 +80,10 @@ func (si SkupperInstall) Execute() error {
 // It cannot be configured.  For a configurable version, use
 // SkupperInstall, instead.
 type SkupperInstallSimple struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 }
 
 func (sis SkupperInstallSimple) Execute() error {
-	cluster, err := sis.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("SkupperInstallSimple failed to get cluster: %w", err)
-	}
 	si := SkupperInstall{
 		Namespace: sis.Namespace,
 		RouterSpec: types.SiteConfigSpec{
@@ -103,7 +95,7 @@ func (sis SkupperInstallSimple) Execute() error {
 			AuthMode:          types.ConsoleAuthModeInternal,
 			User:              "admin",
 			Password:          "admin",
-			Ingress:           cluster.VanClient.GetIngressDefault(),
+			Ingress:           sis.Namespace.VanClient.GetIngressDefault(),
 			Replicas:          1,
 			Router:            constants.DefaultRouterOptions(nil),
 		},

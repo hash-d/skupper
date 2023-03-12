@@ -13,6 +13,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
+	"gotest.tools/assert"
 )
 
 func Test984(t *testing.T) {
@@ -41,15 +42,17 @@ func Test984(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: environment.HelloWorld{
-					Runner:   &runner,
-					Topology: &topologySimple,
+					Runner:       &runner,
+					Topology:     &topologySimple,
+					AutoTearDown: true,
 				},
 			},
 		},
 	}
 	envPhase.Run()
 
-	pub := runnerBase.GetPublicContextPromise(1)
+	pub, err := topologySimple.Get(topology.Public, 1)
+	assert.Assert(t, err)
 
 	testPhase := frame2.Phase{
 		Runner: &runner,

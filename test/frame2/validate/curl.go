@@ -12,7 +12,7 @@ import (
 //
 // If CurlOptions.Timeout is zero, a default is set, instead.
 type Curl struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 
 	// CurlOptions is passed as-is to tools.Curl, with the exception that a
 	// default of 60s is set for the timeout, if the original value is
@@ -34,15 +34,11 @@ func (c Curl) Validate() error {
 		// There is no reason to give Curl no time to respond
 		c.CurlOptions.Timeout = 60
 	}
-	cluster, err := c.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 	log.Printf("Calling Curl on %v", c.Url)
 	resp, err := tools.Curl(
-		cluster.VanClient.KubeClient,
-		cluster.VanClient.RestConfig,
-		cluster.Namespace,
+		c.Namespace.VanClient.KubeClient,
+		c.Namespace.VanClient.RestConfig,
+		c.Namespace.Namespace,
 		c.Podname,
 		c.Url,
 		c.CurlOptions,

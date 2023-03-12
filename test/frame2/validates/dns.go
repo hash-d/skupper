@@ -15,7 +15,7 @@ import (
 // Executes nslookup within a pod, to check whether a name is valid
 // within a namespace or cluster
 type Nslookup struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 
 	Name string
 
@@ -25,12 +25,8 @@ type Nslookup struct {
 }
 
 func (n Nslookup) Validate() error {
-	cc, err := n.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 
-	arg := fmt.Sprintf("kubectl --namespace %s exec deploy/dnsutils -- nslookup %q", cc.Namespace, n.Name)
+	arg := fmt.Sprintf("kubectl --namespace %s exec deploy/dnsutils -- nslookup %q", n.Namespace.Namespace, n.Name)
 
 	n.Cmd.Command = arg
 	n.Cmd.Shell = true

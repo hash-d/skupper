@@ -2,7 +2,6 @@ package execute
 
 import (
 	"context"
-	"errors"
 	"log"
 	"math/rand"
 	"strconv"
@@ -12,16 +11,16 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
+// Connects two Skupper instances installed in different namespaces or clusters
+//
+// In practice, it does two steps: create the token, then use it to create a link
+// on the other namespace
 type SkupperConnect struct {
 	Name string
 	Cost int32
-	From *base.ClusterContextPromise
-	To   *base.ClusterContextPromise
+	From *base.ClusterContext
+	To   *base.ClusterContext
 	Ctx  context.Context
-
-	// Use this if the From namespace does not have a test runner
-	// TODO
-	RunnerBase *base.ClusterTestRunnerBase
 }
 
 func (sc SkupperConnect) Execute() error {
@@ -30,41 +29,21 @@ func (sc SkupperConnect) Execute() error {
 	log.Printf("execute.SkupperConnect")
 	var err error
 
-	ToCluster, err := sc.To.Satisfy()
-	if err != nil {
-		return err
-	}
-	fromCluster, err := sc.From.Satisfy()
-	if err != nil {
-		return err
-	}
-
-	log.Printf("connecting %v to %v", fromCluster.Namespace, ToCluster.Namespace)
-
-	var r base.ClusterTestRunnerBase
-	if sc.RunnerBase != nil {
-		r = *sc.RunnerBase
-	} else {
-		r := sc.From.Runner()
-		if r == nil {
-			return errors.New("SkupperConnect: empty runner on the From cluster")
-		}
-	}
+	log.Printf("connecting %v to %v", sc.From.Namespace, sc.To.Namespace)
 
 	i := rand.Intn(1000)
-	// TODO redo this file name: use domain names, but keep the random thing
-	secretFile := "/tmp/" + r.Needs.NamespaceId + "_public_secret.yaml" + strconv.Itoa(i)
-	err = ToCluster.VanClient.ConnectorTokenCreateFile(ctx, types.DefaultVanName, secretFile)
+	secretFile := "/tmp/" + sc.To.Namespace + "_secret.yaml." + strconv.Itoa(i)
+	err = sc.To.VanClient.ConnectorTokenCreateFile(ctx, types.DefaultVanName, secretFile)
 	if err != nil {
 		return err
 	}
 
 	var connectorCreateOpts types.ConnectorCreateOptions = types.ConnectorCreateOptions{
-		SkupperNamespace: fromCluster.Namespace,
+		SkupperNamespace: sc.From.Namespace,
 		Name:             sc.Name,
 		Cost:             sc.Cost,
 	}
-	_, err = fromCluster.VanClient.ConnectorCreateFromFile(ctx, secretFile, connectorCreateOpts)
+	_, err = sc.From.VanClient.ConnectorCreateFromFile(ctx, secretFile, connectorCreateOpts)
 	log.Printf("SkupperConnect done")
 	return err
 

@@ -46,13 +46,13 @@ func (hw HelloWorld) Execute() error {
 			{
 				Modify: &HelloWorldFrontend{
 					Runner:         hw.Runner,
-					Target:         pub.GetPromise(),
+					Target:         pub,
 					CreateServices: hw.CreateServices,
 				},
 			}, {
 				Modify: &HelloWorldBackend{
 					Runner:         hw.Runner,
-					Target:         prv.GetPromise(),
+					Target:         prv,
 					CreateServices: hw.CreateServices,
 				},
 			},
@@ -65,30 +65,26 @@ func (hw HelloWorld) Execute() error {
 
 type HelloWorldBackend struct {
 	Runner         *frame2.Run
-	Target         *base.ClusterContextPromise
+	Target         *base.ClusterContext
 	CreateServices bool
 	Ctx            context.Context
 }
 
 func (h *HelloWorldBackend) Execute() error {
 	ctx := frame2.ContextOrDefault(h.Ctx)
-	target, err := h.Target.Satisfy()
-	if err != nil {
-		return fmt.Errorf("HelloWorldBackend: failed to satisfy target: %w", err)
-	}
-	backend, _ := k8s.NewDeployment("hello-world-backend", target.Namespace, k8s.DeploymentOpts{
+	backend, _ := k8s.NewDeployment("hello-world-backend", h.Target.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-backend",
 		Labels:        map[string]string{"app": "hello-world-backend"},
 		RestartPolicy: v1.RestartPolicyAlways,
 	})
 
 	// Creating deployments
-	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(ctx, backend, metav1.CreateOptions{}); err != nil {
+	if _, err := h.Target.VanClient.KubeClient.AppsV1().Deployments(h.Target.Namespace).Create(ctx, backend, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	// Waiting for deployments to be ready
-	if _, err := kube.WaitDeploymentReady("hello-world-backend", target.Namespace, target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
+	if _, err := kube.WaitDeploymentReady("hello-world-backend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
 		return err
 	}
 
@@ -97,7 +93,7 @@ func (h *HelloWorldBackend) Execute() error {
 
 type HelloWorldFrontend struct {
 	Runner         *frame2.Run
-	Target         *base.ClusterContextPromise
+	Target         *base.ClusterContext
 	CreateServices bool
 
 	Ctx context.Context
@@ -105,12 +101,8 @@ type HelloWorldFrontend struct {
 
 func (h *HelloWorldFrontend) Execute() error {
 	ctx := frame2.ContextOrDefault(h.Ctx)
-	target, err := h.Target.Satisfy()
-	if err != nil {
-		return fmt.Errorf("HelloWorldFrontend: failed to satisfy target: %w", err)
-	}
 
-	d, err := k8s.NewDeployment("hello-world-frontend", target.Namespace, k8s.DeploymentOpts{
+	d, err := k8s.NewDeployment("hello-world-frontend", h.Target.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-frontend",
 		Labels:        map[string]string{"app": "hello-world-frontend"},
 		RestartPolicy: v1.RestartPolicyAlways,
@@ -118,10 +110,10 @@ func (h *HelloWorldFrontend) Execute() error {
 	if err != nil {
 		return fmt.Errorf("HelloWorldFrontend: failed to deploy: %w", err)
 	}
-	if _, err := target.VanClient.KubeClient.AppsV1().Deployments(target.Namespace).Create(ctx, d, metav1.CreateOptions{}); err != nil {
+	if _, err := h.Target.VanClient.KubeClient.AppsV1().Deployments(h.Target.Namespace).Create(ctx, d, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	if _, err := kube.WaitDeploymentReady("hello-world-frontend", target.Namespace, target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
+	if _, err := kube.WaitDeploymentReady("hello-world-frontend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
 		return err
 	}
 	return nil

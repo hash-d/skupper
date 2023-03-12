@@ -17,7 +17,7 @@ var (
 )
 
 type Container struct {
-	Namespace        *base.ClusterContextPromise
+	Namespace        *base.ClusterContext
 	PodSelector      string
 	ContainerName    string // If empty, check all containers on selected pods
 	ExpectNone       bool   // If true, it will be an error if any pods are found
@@ -41,12 +41,7 @@ func (c Container) Validate() error {
 func (c Container) Run() error {
 	log.Printf("Validating %+v", c)
 
-	cluster, err := c.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
-
-	pods, err := kube.GetPods(c.PodSelector, cluster.Namespace, cluster.VanClient.KubeClient)
+	pods, err := kube.GetPods(c.PodSelector, c.Namespace.Namespace, c.Namespace.VanClient.KubeClient)
 	if err != nil {
 		return err
 	}

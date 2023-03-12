@@ -14,7 +14,8 @@ import (
 )
 
 type SegmentSetup struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
+	Runner    *base.ClusterTestRunnerBase
 }
 
 // Right now, this is a copy of hello world's setup.  The
@@ -22,7 +23,7 @@ type SegmentSetup struct {
 // frame2.step and then compose it back.
 func (s SegmentSetup) Execute() error {
 
-	runner := s.Namespace.Runner()
+	runner := s.Runner
 
 	log.Printf("Segment setup: %+v", s)
 	needs := base.ClusterNeeds{
@@ -119,9 +120,10 @@ func deployResources(pub *base.ClusterContext, prv *base.ClusterContext) error {
 
 type SegmentTeardown struct {
 	frame2.Step
+	Runner *base.ClusterTestRunnerBase
 }
 
 func (s SegmentTeardown) Execute() error {
-	base.TearDownSimplePublicAndPrivate(s.Namespace.Runner())
+	base.TearDownSimplePublicAndPrivate(s.Runner)
 	return nil
 }

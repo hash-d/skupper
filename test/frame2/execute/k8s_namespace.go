@@ -9,24 +9,20 @@ import (
 )
 
 type TestRunnerCreateNamespace struct {
-	Namespace    base.ClusterContextPromise
+	Namespace    *base.ClusterContext
 	AutoTearDown bool
 }
 
 func (trcn TestRunnerCreateNamespace) Execute() error {
 	log.Printf("TestRunnerCreateNamespace")
-	cluster, err := trcn.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("TestRunnerCreateNamespace failed to create namespace from promise: %w", err)
-	}
 
-	log.Printf("Creating namespace %v", cluster.Namespace)
+	log.Printf("Creating namespace %v", trcn.Namespace.Namespace)
 
-	err = cluster.CreateNamespace()
+	err := trcn.Namespace.CreateNamespace()
 	if err != nil {
 		return fmt.Errorf(
 			"TestRunnerCreateNamespace failed to create namespace %q: %w",
-			cluster.Namespace, err,
+			trcn.Namespace.Namespace, err,
 		)
 	}
 
@@ -43,20 +39,15 @@ func (trcn TestRunnerCreateNamespace) Teardown() frame2.Executor {
 }
 
 type TestRunnerDeleteNamespace struct {
-	Namespace base.ClusterContextPromise
+	Namespace *base.ClusterContext
 }
 
 func (trdn TestRunnerDeleteNamespace) Execute() error {
-	cluster, err := trdn.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("TestRunnerCreateNamespace failed to delete namespace from promise: %w", err)
-	}
-
-	err = cluster.DeleteNamespace()
+	err := trdn.Namespace.DeleteNamespace()
 	if err != nil {
 		return fmt.Errorf(
 			"TestRunnerCreateNamespace failed to delete namespace %q: %w",
-			cluster.Namespace, err,
+			trdn.Namespace.Namespace, err,
 		)
 	}
 	return nil

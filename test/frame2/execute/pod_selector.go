@@ -10,7 +10,7 @@ import (
 )
 
 type PodSelector struct {
-	Namespace     base.ClusterContextPromise
+	Namespace     base.ClusterContext
 	Selector      string
 	ExpectNone    bool // If true, it will be an error if any pods are found
 	ExpectExactly int  // if greater than 0, exactly this number of pods must be found
@@ -20,12 +20,8 @@ type PodSelector struct {
 }
 
 func (p PodSelector) Execute() error {
-	cluster, err := p.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 
-	pods, err := kube.GetPods(p.Selector, cluster.Namespace, cluster.VanClient.KubeClient)
+	pods, err := kube.GetPods(p.Selector, p.Namespace.Namespace, p.Namespace.VanClient.KubeClient)
 	if err != nil {
 		return err
 	}

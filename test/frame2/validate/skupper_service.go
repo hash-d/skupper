@@ -9,30 +9,25 @@ import (
 )
 
 type SkupperService struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 
 	Return *types.ServiceInterface
 }
 
-func (ss SkupperService) Validate() error {
+func (s SkupperService) Validate() error {
 
-	namespace, err := ss.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("failed to satisfy namespace: %w", err)
-	}
-
-	list, err := namespace.VanClient.ServiceInterfaceList(context.Background())
+	list, err := s.Namespace.VanClient.ServiceInterfaceList(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to list interfaces: %w", err)
 	}
 
 	for _, item := range list {
-		if item.Address == ss.Name {
-			ss.Return = item
+		if item.Address == s.Name {
+			s.Return = item
 			return nil
 		}
 	}
 
-	return fmt.Errorf("service %q not found in namespace %q", ss.Name, namespace.Namespace)
+	return fmt.Errorf("service %q not found in namespace %q", s.Name, s.Namespace.Namespace)
 }

@@ -14,7 +14,7 @@ type SkupperServiceCreate struct {
 
 	// Required
 
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 	Port      []string
 
@@ -88,7 +88,7 @@ func (ssc SkupperServiceCreate) Teardown() frame2.Executor {
 type SkupperServiceDelete struct {
 	// Required
 
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	ArgName   string
 
 	// Optional
@@ -145,7 +145,7 @@ type SkupperServiceBind struct {
 
 	// Required
 
-	Namespace  *base.ClusterContextPromise
+	Namespace  *base.ClusterContext
 	Name       string
 	TargetType string
 	TargetName string
@@ -213,7 +213,7 @@ type SkupperServiceUnbind struct {
 
 	// Required
 
-	Namespace  *base.ClusterContextPromise
+	Namespace  *base.ClusterContext
 	Name       string
 	TargetType string
 	TargetName string

@@ -7,7 +7,7 @@ import (
 )
 
 type DeploySelector struct {
-	Namespace base.ClusterContextPromise
+	Namespace base.ClusterContext
 	Name      string
 
 	// Return value
@@ -15,13 +15,8 @@ type DeploySelector struct {
 }
 
 func (d *DeploySelector) Execute() error {
-	cluster, err := d.Namespace.Satisfy()
 
-	if err != nil {
-		return err
-	}
-
-	deploy, err := kube.GetDeployment(d.Name, cluster.Namespace, cluster.VanClient.KubeClient)
+	deploy, err := kube.GetDeployment(d.Name, d.Namespace.Namespace, d.Namespace.VanClient.KubeClient)
 	d.Deploy = deploy
 	if err != nil {
 		return err

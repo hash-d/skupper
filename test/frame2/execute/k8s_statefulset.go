@@ -12,7 +12,7 @@ import (
 
 // Executes a fully specified K8S Statefulset
 type K8SStatefulSet struct {
-	Namespace    *base.ClusterContextPromise
+	Namespace    *base.ClusterContext
 	StatefulSet  *apps.StatefulSet
 	AutoTeardown bool
 	Ctx          context.Context
@@ -22,12 +22,9 @@ type K8SStatefulSet struct {
 
 func (k *K8SStatefulSet) Execute() error {
 	ctx := frame2.ContextOrDefault(k.Ctx)
-	cc, err := k.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
-	}
 
-	k.Result, err = cc.VanClient.KubeClient.AppsV1().StatefulSets(cc.Namespace).Create(ctx, k.StatefulSet, metav1.CreateOptions{})
+	var err error
+	k.Result, err = k.Namespace.VanClient.KubeClient.AppsV1().StatefulSets(k.Namespace.Namespace).Create(ctx, k.StatefulSet, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to create statefulset %q: %w", k.StatefulSet.Name, err)
 	}
@@ -48,7 +45,7 @@ func (k *K8SStatefulSet) Teardown() frame2.Executor {
 }
 
 type K8SStatefulSetRemove struct {
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 
 	Ctx context.Context
@@ -56,12 +53,8 @@ type K8SStatefulSetRemove struct {
 
 func (k *K8SStatefulSetRemove) Execute() error {
 	ctx := frame2.ContextOrDefault(k.Ctx)
-	cc, err := k.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
-	}
 
-	err = cc.VanClient.KubeClient.AppsV1().StatefulSets(cc.Namespace).Delete(ctx, k.Name, metav1.DeleteOptions{})
+	err := k.Namespace.VanClient.KubeClient.AppsV1().StatefulSets(k.Namespace.Namespace).Delete(ctx, k.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to remove statefulset %q: %w", k.Name, err)
 	}

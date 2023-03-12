@@ -50,6 +50,9 @@ func (c *contextHolder) Get(kind topology.ClusterType, number int) (*base.Cluste
 	kindList := c.GetAll(kind)
 	// TODO: implement mod logic, implement negative logic
 	// TODO: this should all probably move to a add-on struct
+	if len(kindList) == 0 {
+		return nil, fmt.Errorf("no clusterContext of type %v on the topology", kind)
+	}
 	target := number - 1
 	return kindList[target], nil
 }

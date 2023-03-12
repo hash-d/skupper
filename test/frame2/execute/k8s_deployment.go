@@ -18,7 +18,7 @@ import (
 // See K8SDeployment for a more complete interface
 type K8SDeploymentOpts struct {
 	Name           string
-	Namespace      *base.ClusterContextPromise
+	Namespace      *base.ClusterContext
 	DeploymentOpts k8s.DeploymentOpts
 	Wait           time.Duration // Waits for the deployment to be ready.  Otherwise, returns as soon as the create instruction has been issued.  If the wait lapses, return an error.
 	Runner         *frame2.Run
@@ -30,18 +30,14 @@ type K8SDeploymentOpts struct {
 
 func (d *K8SDeploymentOpts) Execute() error {
 	ctx := frame2.ContextOrDefault(d.Ctx)
-	cc, err := d.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
-	}
-	deployment, err := k8s.NewDeployment(d.Name, cc.Namespace, d.DeploymentOpts)
+	deployment, err := k8s.NewDeployment(d.Name, d.Namespace.Namespace, d.DeploymentOpts)
 	if err != nil {
 		return err
 	}
 
 	d.Result = deployment
 
-	d.Result, err = cc.VanClient.KubeClient.AppsV1().Deployments(cc.Namespace).Create(ctx, deployment, v1.CreateOptions{})
+	d.Result, err = d.Namespace.VanClient.KubeClient.AppsV1().Deployments(d.Namespace.Namespace).Create(ctx, deployment, v1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to create deployment: %w", err)
 	}
@@ -83,7 +79,7 @@ func (d *K8SDeploymentOpts) Execute() error {
 // For an example/template on creating a *v1.Deployment by hand, check
 // test/utils/base/cluster_context.go (k8s.NewDeployment)
 type K8SDeployment struct {
-	Namespace  *base.ClusterContextPromise
+	Namespace  *base.ClusterContext
 	Deployment *appsv1.Deployment
 
 	Result *appsv1.Deployment
@@ -92,12 +88,9 @@ type K8SDeployment struct {
 
 func (d *K8SDeployment) Execute() error {
 	ctx := frame2.ContextOrDefault(d.Ctx)
-	cc, err := d.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
-	}
 
-	d.Result, err = cc.VanClient.KubeClient.AppsV1().Deployments(cc.Namespace).Create(ctx, d.Deployment, v1.CreateOptions{})
+	var err error
+	d.Result, err = d.Namespace.VanClient.KubeClient.AppsV1().Deployments(d.Namespace.Namespace).Create(ctx, d.Deployment, v1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to create deployment: %w", err)
 	}
@@ -107,7 +100,7 @@ func (d *K8SDeployment) Execute() error {
 
 type K8SDeploymentGet struct {
 	Runner    *frame2.Run
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Name      string
 	Ctx       context.Context
 
@@ -116,12 +109,9 @@ type K8SDeploymentGet struct {
 
 func (kdg K8SDeploymentGet) Validate() error {
 	ctx := frame2.ContextOrDefault(kdg.Ctx)
-	cc, err := kdg.Namespace.Satisfy()
-	if err != nil {
-		return fmt.Errorf("Failed to satisfy ClusterContextPromise: %w", err)
-	}
 
-	kdg.Result, err = cc.VanClient.KubeClient.AppsV1().Deployments(cc.Namespace).Get(ctx, kdg.Name, metav1.GetOptions{})
+	var err error
+	kdg.Result, err = kdg.Namespace.VanClient.KubeClient.AppsV1().Deployments(kdg.Namespace.Namespace).Get(ctx, kdg.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to get deployment %q: %w", kdg.Name, err)
 	}
@@ -134,7 +124,7 @@ func (kdg K8SDeploymentGet) Validate() error {
 }
 
 type K8SDeploymentAnnotate struct {
-	Namespace   *base.ClusterContextPromise
+	Namespace   *base.ClusterContext
 	Name        string
 	Annotations map[string]string
 
@@ -143,12 +133,8 @@ type K8SDeploymentAnnotate struct {
 
 func (kda K8SDeploymentAnnotate) Execute() error {
 	ctx := frame2.ContextOrDefault(kda.Ctx)
-	cluster, err := kda.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
 	// Retrieving Deployment
-	deploy, err := cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Get(ctx, kda.Name, metav1.GetOptions{})
+	deploy, err := kda.Namespace.VanClient.KubeClient.AppsV1().Deployments(kda.Namespace.VanClient.Namespace).Get(ctx, kda.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -160,14 +146,14 @@ func (kda K8SDeploymentAnnotate) Execute() error {
 	for k, v := range kda.Annotations {
 		deploy.Annotations[k] = v
 	}
-	_, err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.Namespace).Update(ctx, deploy, metav1.UpdateOptions{})
+	_, err = kda.Namespace.VanClient.KubeClient.AppsV1().Deployments(kda.Namespace.Namespace).Update(ctx, deploy, metav1.UpdateOptions{})
 	return err
 
 }
 
 type K8SUndeploy struct {
 	Name      string
-	Namespace *base.ClusterContextPromise
+	Namespace *base.ClusterContext
 	Wait      time.Duration // Waits for the deployment to be gone.  Otherwise, returns as soon as the delete instruction has been issued.  If the wait lapses, return an error.
 
 	Ctx context.Context
@@ -175,11 +161,7 @@ type K8SUndeploy struct {
 
 func (k *K8SUndeploy) Execute() error {
 	ctx := frame2.ContextOrDefault(k.Ctx)
-	cluster, err := k.Namespace.Satisfy()
-	if err != nil {
-		return err
-	}
-	err = cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Delete(ctx, k.Name, metav1.DeleteOptions{})
+	err := k.Namespace.VanClient.KubeClient.AppsV1().Deployments(k.Namespace.VanClient.Namespace).Delete(ctx, k.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -193,7 +175,7 @@ func (k *K8SUndeploy) Execute() error {
 			KeepTrying: true,
 		},
 		Fn: func() error {
-			_, err := cluster.VanClient.KubeClient.AppsV1().Deployments(cluster.VanClient.Namespace).Get(ctx, k.Name, metav1.GetOptions{})
+			_, err := k.Namespace.VanClient.KubeClient.AppsV1().Deployments(k.Namespace.VanClient.Namespace).Get(ctx, k.Name, metav1.GetOptions{})
 			if err == nil {
 				return fmt.Errorf("deployment %v still available after deletion", k.Name)
 			}

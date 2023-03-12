@@ -15,17 +15,14 @@ import (
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/frame2/topology/topologies"
 	"github.com/skupperproject/skupper/test/frame2/validate"
-	"github.com/skupperproject/skupper/test/frame2/walk"
 	"github.com/skupperproject/skupper/test/utils/base"
+	"gotest.tools/assert"
 )
 
 func Test311(t *testing.T) {
 	var runner = &base.ClusterTestRunnerBase{}
-	var pub1 = runner.GetPublicContextPromise(1)
-	var prv1 = runner.GetPrivateContextPromise(1)
-	var pub2 = runner.GetPublicContextPromise(2)
-	var prv2 = runner.GetPrivateContextPromise(2)
-	//	var prv2 = runner.GetPrivateContextPromise(2)
+	var f2runner = &frame2.Run{T: t}
+
 	var retryAllow10 = frame2.RetryOptions{
 		Allow: 120,
 	}
@@ -35,10 +32,33 @@ func Test311(t *testing.T) {
 		Name:           "test-311",
 		TestRunnerBase: runner,
 	}
-	err := topologyN.Execute()
+	setupPhase := frame2.Phase{
+		Runner: f2runner,
+		Setup: []frame2.Step{
+			{
+				Modify: environment.HelloWorld{
+					Topology:     &topologyN,
+					Runner:       f2runner,
+					AutoTearDown: true,
+				},
+			},
+		},
+	}
+	err := setupPhase.Run()
 	if err != nil {
 		t.Fatalf("failed creating topology: %v", err)
 	}
+
+	// TODO: perhaps change this by something that returns and asserts in a single go
+	pub1, err := topologyN.Get(topology.Public, 1)
+	assert.Assert(t, err)
+	prv1, err := topologyN.Get(topology.Private, 1)
+	assert.Assert(t, err)
+	pub2, err := topologyN.Get(topology.Public, 2)
+	assert.Assert(t, err)
+	prv2, err := topologyN.Get(topology.Private, 2)
+	assert.Assert(t, err)
+
 	private1Ok := &frame2.Step{
 		Name: "check-private1-outgoing",
 		Modify: tester.CliLinkStatus{
@@ -135,21 +155,14 @@ func Test311(t *testing.T) {
 		public2Ok,
 	}
 
-	var f2runner = &frame2.Run{T: t}
-
 	var tests = frame2.Phase{
 		Runner: f2runner,
 		Name:   "Test311",
 		Doc: "Checks how routers going down impact network link status output.  " +
 			"It uses an N topology (pub1 <- prv1 -> pub2 <- prv2)",
 		Setup: []frame2.Step{
+			// Move the ones below as an option to HelloWorld
 			{
-				Modify: environment.HelloWorld{
-					Topology: &topologyN,
-					Runner:   f2runner,
-				},
-				// Move the ones below as an option to HelloWorld
-			}, {
 				Doc: "Create frontend service",
 				Modify: execute.K8SServiceCreate{
 					Namespace: pub1,
@@ -208,13 +221,6 @@ func Test311(t *testing.T) {
 					Url:       "http://hello-world-backend:8080/api/hello",
 				},
 				ValidatorRetry: retryAllow10,
-			},
-		},
-		Teardown: []frame2.Step{
-			{
-				Modify: walk.SegmentTeardown{
-					Step: frame2.Step{Namespace: prv1},
-				},
 			},
 		},
 		MainSteps: []frame2.Step{
