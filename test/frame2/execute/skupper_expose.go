@@ -72,7 +72,7 @@ func (se SkupperExpose) Execute() error {
 		for _, p := range se.Ports {
 			tmpPorts = append(tmpPorts, strconv.Itoa(p))
 		}
-		args = append(args, "--ports", strings.Join(tmpPorts, ","))
+		args = append(args, "--port", strings.Join(tmpPorts, ","))
 	}
 
 	cmd := Cmd{}

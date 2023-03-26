@@ -6,7 +6,9 @@ import (
 
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/k8s"
@@ -19,7 +21,7 @@ type HelloWorld struct {
 	Runner   *frame2.Run
 	Topology *topology.Basic
 
-	// This will create K8S services
+	// This will create K8S services TODO
 	CreateServices bool
 
 	// This will create Skupper services; if CreateServices is also
@@ -42,14 +44,18 @@ func (hw HelloWorld) Execute() error {
 	}
 
 	phase := frame2.Phase{
+		Runner: hw.Runner,
+		Doc:    "Install Hello World front and back ends",
 		MainSteps: []frame2.Step{
 			{
+				Doc: "Install Hello World frontend",
 				Modify: &HelloWorldFrontend{
 					Runner:         hw.Runner,
 					Target:         pub,
 					CreateServices: hw.CreateServices,
 				},
 			}, {
+				Doc: "Install Hello World backend",
 				Modify: &HelloWorldBackend{
 					Runner:         hw.Runner,
 					Target:         prv,
@@ -95,6 +101,7 @@ type HelloWorldFrontend struct {
 	Runner         *frame2.Run
 	Target         *base.ClusterContext
 	CreateServices bool
+	SkupperExpose  bool
 
 	Ctx context.Context
 }
@@ -102,19 +109,138 @@ type HelloWorldFrontend struct {
 func (h *HelloWorldFrontend) Execute() error {
 	ctx := frame2.ContextOrDefault(h.Ctx)
 
+	labels := map[string]string{"app": "hello-world-frontend"}
+
 	d, err := k8s.NewDeployment("hello-world-frontend", h.Target.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-frontend",
-		Labels:        map[string]string{"app": "hello-world-frontend"},
+		Labels:        labels,
 		RestartPolicy: v1.RestartPolicyAlways,
 	})
 	if err != nil {
 		return fmt.Errorf("HelloWorldFrontend: failed to deploy: %w", err)
 	}
-	if _, err := h.Target.VanClient.KubeClient.AppsV1().Deployments(h.Target.Namespace).Create(ctx, d, metav1.CreateOptions{}); err != nil {
-		return err
+
+	phase := frame2.Phase{
+		Runner: h.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Doc: "Installing hello-world-frontend",
+				Modify: &execute.K8SDeployment{
+					Namespace:  h.Target,
+					Deployment: d,
+					Ctx:        ctx,
+				},
+			}, {
+				Doc: "Creating a local service for hello-world-frontend",
+				Modify: &execute.K8SServiceCreate{
+					Namespace: h.Target,
+					Name:      "hello-world-frontend",
+					Labels:    labels,
+					Ports:     []int32{8080},
+				},
+				SkipWhen: !h.CreateServices,
+			}, {
+				Doc: "Exposing the local service via Skupper",
+				Modify: &execute.SkupperExpose{
+					Runner:    h.Runner,
+					Namespace: h.Target,
+					Type:      "service",
+					Name:      "hello-world-frontend",
+				},
+				SkipWhen: !h.CreateServices || !h.SkupperExpose,
+			}, {
+				Doc: "Exposing the deployment via Skupper",
+				Modify: &execute.SkupperExpose{
+					Runner:    h.Runner,
+					Namespace: h.Target,
+					Ports:     []int{8080},
+					Type:      "deployment",
+					Name:      "hello-world-frontend",
+				},
+				SkipWhen: h.CreateServices && !h.SkupperExpose,
+			},
+		},
 	}
+	phase.Run()
+
 	if _, err := kube.WaitDeploymentReady("hello-world-frontend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
 		return err
 	}
 	return nil
+}
+
+// Validates a Hello World deployment by Curl from the given Namespace.
+//
+// The individual validaators (front and back) may be configured, but generally do not need to;
+// they'll use the default values.
+type HelloWorldValidate struct {
+	Runner                  *frame2.Run
+	Namespace               *base.ClusterContext
+	HelloWorldValidateFront HelloWorldValidateFront
+
+	frame2.Log
+}
+
+func (h HelloWorldValidate) Validate() error {
+	if h.Namespace == nil {
+		return fmt.Errorf("HelloWorldValidate configuration error: empty Namespace")
+	}
+	if h.HelloWorldValidateFront.Namespace == nil {
+		h.HelloWorldValidateFront.Namespace = h.Namespace
+	}
+	if h.HelloWorldValidateFront.Runner == nil {
+		h.HelloWorldValidateFront.Runner = h.Runner
+	}
+	h.HelloWorldValidateFront.OrSetLogger(h.Log.GetLogger())
+
+	phase := frame2.Phase{
+		Runner: h.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validators: []frame2.Validator{
+					&h.HelloWorldValidateFront,
+				},
+			},
+		},
+	}
+	phase.OrSetLogger(h.Logger)
+	return phase.Run()
+}
+
+type HelloWorldValidateFront struct {
+	Runner      *frame2.Run
+	Namespace   *base.ClusterContext
+	ServiceName string // default is hello-world-frontend
+	ServicePort int    // default is 8080
+
+	frame2.Log
+}
+
+func (h HelloWorldValidateFront) Validate() error {
+	if h.Namespace == nil {
+		return fmt.Errorf("HelloWorldValidateFront configuration error: empty Namespace")
+	}
+	svc := h.ServiceName
+	if svc == "" {
+		svc = "hello-world-frontend"
+	}
+	port := h.ServicePort
+	if port == 0 {
+		port = 8080
+	}
+	phase := frame2.Phase{
+		Runner: h.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &validate.Curl{
+					Namespace:   h.Namespace,
+					Url:         fmt.Sprintf("http://%s:%d", svc, port),
+					Fail400Plus: true,
+					Log:         h.Log,
+				},
+			},
+		},
+	}
+	phase.SetLogger(h.Logger)
+	return phase.Run()
 }

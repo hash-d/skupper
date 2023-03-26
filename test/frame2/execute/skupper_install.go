@@ -52,12 +52,12 @@ func (si SkupperInstall) Execute() error {
 			MainSteps: []frame2.Step{{
 				Doc: "Check that the router and service controller containers are reporting as ready",
 				Validators: []frame2.Validator{
-					validate.Container{
+					&validate.Container{
 						Namespace:   si.Namespace,
 						PodSelector: validate.RouterSelector,
 						StatusCheck: true,
 					},
-					validate.Container{
+					&validate.Container{
 						Namespace:   si.Namespace,
 						PodSelector: validate.ServiceControllerSelector,
 						StatusCheck: true,

@@ -54,7 +54,7 @@ func (d *K8SDeploymentOpts) Execute() error {
 			Runner: d.Runner,
 			MainSteps: []frame2.Step{
 				{
-					Validator: K8SDeploymentGet{
+					Validator: &K8SDeploymentGet{
 						Runner:    d.Runner,
 						Namespace: d.Namespace,
 						Name:      d.Name,
@@ -105,6 +105,8 @@ type K8SDeploymentGet struct {
 	Ctx       context.Context
 
 	Result *appsv1.Deployment
+
+	frame2.Log
 }
 
 func (kdg K8SDeploymentGet) Validate() error {

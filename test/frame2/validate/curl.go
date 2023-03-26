@@ -2,8 +2,8 @@ package validate
 
 import (
 	"fmt"
-	"log"
 
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/tools"
 )
@@ -24,6 +24,7 @@ type Curl struct {
 	DeployCurl  bool   // Not Implemented
 
 	// TODO: Add cli.Expect to inspect results?
+	frame2.Log
 }
 
 func (c Curl) Validate() error {
@@ -34,7 +35,7 @@ func (c Curl) Validate() error {
 		// There is no reason to give Curl no time to respond
 		c.CurlOptions.Timeout = 60
 	}
-	log.Printf("Calling Curl on %v", c.Url)
+	c.Log.Printf("Calling Curl on %v", c.Url)
 	resp, err := tools.Curl(
 		c.Namespace.VanClient.KubeClient,
 		c.Namespace.VanClient.RestConfig,
@@ -43,17 +44,17 @@ func (c Curl) Validate() error {
 		c.Url,
 		c.CurlOptions,
 	)
-	log.Printf("- Output:\n%v", resp.Output)
+	c.Log.Printf("- Output:\n%v", resp.Output)
 	if err != nil {
-		log.Printf("- Err: %v", err)
+		c.Log.Printf("- Err: %v", err)
 		return fmt.Errorf("curl invokation failed: %w", err)
 	}
 
-	log.Printf("- status code %d", resp.StatusCode)
-	log.Printf("- HTTP version: %v", resp.HttpVersion)
-	log.Printf("- Reason phrase: %v", resp.ReasonPhrase)
-	log.Printf("- Headers:\n%v", resp.Headers)
-	log.Printf("- Body:\n%v", resp.Body)
+	c.Log.Printf("- status code %d", resp.StatusCode)
+	c.Log.Printf("- HTTP version: %v", resp.HttpVersion)
+	c.Log.Printf("- Reason phrase: %v", resp.ReasonPhrase)
+	c.Log.Printf("- Headers:\n%v", resp.Headers)
+	c.Log.Printf("- Body:\n%v", resp.Body)
 
 	if c.Fail400Plus && resp.StatusCode >= 400 {
 		return fmt.Errorf("curl invokation returned status code %d", resp.StatusCode)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/pkg/kube"
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 	v1 "k8s.io/api/core/v1"
 )
@@ -32,6 +33,7 @@ type Container struct {
 	StatusCheck      bool
 
 	Return *v1.Container
+	frame2.Log
 }
 
 func (c Container) Validate() error {

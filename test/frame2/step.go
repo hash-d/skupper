@@ -59,6 +59,7 @@ func (s Step) IsVerbose() bool {
 
 type Validator interface {
 	Validate() error
+	FrameLogger
 }
 
 // TODO create ValidatorList, with Validator + RetryOptions

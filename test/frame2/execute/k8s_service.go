@@ -171,6 +171,8 @@ type K8SServiceGet struct {
 	Name      string
 	Ctx       context.Context
 
+	frame2.Log
+
 	// Return
 	Service *apiv1.Service
 }

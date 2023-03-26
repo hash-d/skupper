@@ -66,9 +66,10 @@ type HelloWorldN struct {
 //
 // To use the auto tearDown, make sure to populate the Runner
 type HelloWorld struct {
-	Runner       *frame2.Run // Required for autoTeardown and step logging
-	Topology     *topology.Basic
-	AutoTearDown bool
+	Runner        *frame2.Run // Required for autoTeardown and step logging
+	Topology      *topology.Basic
+	AutoTearDown  bool
+	SkupperExpose bool
 }
 
 func (hw HelloWorld) Execute() error {
@@ -85,7 +86,8 @@ func (hw HelloWorld) Execute() error {
 				Modify: &topo,
 			}, {
 				Modify: deploy.HelloWorld{
-					Topology: hw.Topology,
+					Topology:      hw.Topology,
+					SkupperExpose: hw.SkupperExpose,
 				},
 			},
 		},

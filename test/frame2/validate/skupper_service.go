@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/skupperproject/skupper/api/types"
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
@@ -13,6 +14,7 @@ type SkupperService struct {
 	Name      string
 
 	Return *types.ServiceInterface
+	frame2.Log
 }
 
 func (s SkupperService) Validate() error {

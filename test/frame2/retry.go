@@ -25,10 +25,10 @@ type Retry struct {
 //
 // Even successes may require additional runs.  There are two cases here:
 //
-// - If Ensure is set, the test will keep trying on success until the required
-//   number of successes are met
-// - If Ignore was set, that number of successes will be ignored on the count
-//   to Ensure, possibly requiring additional runs until the Ensure target is met
+//   - If Ensure is set, the test will keep trying on success until the required
+//     number of successes are met
+//   - If Ignore was set, that number of successes will be ignored on the count
+//     to Ensure, possibly requiring additional runs until the Ensure target is met
 //
 // These, however, do not count as Retries.  i. e, Retries are only those
 // additional runs that were caused by a failure.
@@ -36,7 +36,6 @@ type Retry struct {
 // The ignore counts from the first success in the last success streak from the
 // Allow phase, or from the start of the retry phase (if no Allow configured or
 // no success in that phase)
-//
 type RetryOptions struct {
 	Allow    int           // for initial failures
 	Ignore   int           // initial successes
@@ -133,7 +132,7 @@ func (r Retry) Run() ([]error, error) {
 
 				msg := fmt.Sprintf("Attempt %d succeeded; ", totalTries)
 
-				msg = msg + strings.Join(info, ",")
+				msg = msg + strings.Join(info, ", ")
 
 				log.Printf(msg)
 			}

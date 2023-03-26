@@ -40,6 +40,7 @@ func TestPingPong(t *testing.T) {
 	r := frame2.Run{
 		T: t,
 	}
+	defer r.Report()
 
 	var topologyV topology.Basic
 	topologyV = &topologies.V{
@@ -52,19 +53,55 @@ func TestPingPong(t *testing.T) {
 		Runner: &r,
 		Setup: []frame2.Step{
 			{
+				Doc: "Setup a HelloWorld environment",
 				Modify: environment.HelloWorld{
-					Runner:       &r,
-					Topology:     &topologyV,
-					AutoTearDown: true,
+					Runner:        &r,
+					Topology:      &topologyV,
+					AutoTearDown:  true,
+					SkupperExpose: true,
 				},
 			},
 		},
 	}
-
 	assert.Assert(t, setup.Run())
 
-	vertex, err := topologyV.Get(topology.Public, 3)
+	vertex, err := topologyV.(topology.TwoBranched).GetVertex()
 	assert.Assert(t, err)
+
+	var hwv frame2.Validator
+	hwv = &deploy.HelloWorldValidate{
+		Namespace: vertex,
+	}
+
+	monitorPhase := frame2.Phase{
+		Runner: &r,
+		Setup: []frame2.Step{
+			{
+				Doc: "Validate Hello World deployment from vertex",
+				Validator: &deploy.HelloWorldValidate{
+					Namespace: vertex,
+					Runner:    &r,
+				},
+				ValidatorRetry: frame2.RetryOptions{
+					Allow:  60,
+					Ignore: 5,
+					Ensure: 5,
+				},
+			}, {
+
+				Doc: "Installing hello-world monitors",
+				Modify: &frame2.DefaultMonitor{
+					Validators: map[string]frame2.Validator{
+						//						"hello-world": deploy.HelloWorldValidate{
+						//							Namespace: vertex,
+						//						}.(frame2.Validator),
+						"hello-world": hwv,
+					},
+				},
+			},
+		},
+	}
+	assert.Assert(t, monitorPhase.Run())
 
 	main := frame2.Phase{
 		Runner: &r,
@@ -116,9 +153,19 @@ func (m *MoveToRight) Execute() error {
 	}
 
 	log.Printf("LF: %+v\nLB: %+v\nRF: %+v\nRB: %+v\nVX: %+v\n", leftFront, leftBack, rightFront, rightBack, vertex)
+	validateFront := deploy.HelloWorldValidateFront{
+		Runner:    m.Runner,
+		Namespace: vertex,
+	}
+	validateOpts := frame2.RetryOptions{
+		Allow:  5,
+		Ignore: 5,
+		Ensure: 5,
+	}
 
 	p := frame2.Phase{
 		Runner: m.Runner,
+		Doc:    "Move Hello World from left to right",
 		MainSteps: []frame2.Step{
 			{
 				Doc: "Move frontend from left to right",
@@ -132,8 +179,12 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Frontend",
 							Modify: &deploy.HelloWorldFrontend{
-								Target: rightFront,
+								Runner:        m.Runner,
+								Target:        rightFront,
+								SkupperExpose: true,
 							},
+							Validator:      &validateFront,
+							ValidatorRetry: validateOpts,
 						},
 					},
 					UndeploySteps: []frame2.Step{
@@ -144,6 +195,8 @@ func (m *MoveToRight) Execute() error {
 								Namespace: leftFront,
 								Wait:      2 * time.Minute,
 							},
+							Validator:      &validateFront,
+							ValidatorRetry: validateOpts,
 						},
 					},
 				},
