@@ -13,7 +13,6 @@ import (
 	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/k8s"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Deploys HelloWorld; frontend on pub1, backend on prv1
@@ -73,27 +72,72 @@ type HelloWorldBackend struct {
 	Runner         *frame2.Run
 	Target         *base.ClusterContext
 	CreateServices bool
+	SkupperExpose  bool
 	Ctx            context.Context
 }
 
 func (h *HelloWorldBackend) Execute() error {
+
+	////////////////////////////////////////////////////////////
 	ctx := frame2.ContextOrDefault(h.Ctx)
-	backend, _ := k8s.NewDeployment("hello-world-backend", h.Target.Namespace, k8s.DeploymentOpts{
+
+	labels := map[string]string{"app": "hello-world-backend"}
+
+	d, err := k8s.NewDeployment("hello-world-backend", h.Target.Namespace, k8s.DeploymentOpts{
 		Image:         "quay.io/skupper/hello-world-backend",
-		Labels:        map[string]string{"app": "hello-world-backend"},
+		Labels:        labels,
 		RestartPolicy: v1.RestartPolicyAlways,
 	})
-
-	// Creating deployments
-	if _, err := h.Target.VanClient.KubeClient.AppsV1().Deployments(h.Target.Namespace).Create(ctx, backend, metav1.CreateOptions{}); err != nil {
-		return err
+	if err != nil {
+		return fmt.Errorf("HelloWorldBackend: failed to deploy: %w", err)
 	}
 
-	// Waiting for deployments to be ready
+	phase := frame2.Phase{
+		Runner: h.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Doc: "Installing hello-world-backend",
+				Modify: &execute.K8SDeployment{
+					Namespace:  h.Target,
+					Deployment: d,
+					Ctx:        ctx,
+				},
+			}, {
+				Doc: "Creating a local service for hello-world-backend",
+				Modify: &execute.K8SServiceCreate{
+					Namespace: h.Target,
+					Name:      "hello-world-backend",
+					Labels:    labels,
+					Ports:     []int32{8080},
+				},
+				SkipWhen: !h.CreateServices,
+			}, {
+				Doc: "Exposing the local service via Skupper",
+				Modify: &execute.SkupperExpose{
+					Runner:    h.Runner,
+					Namespace: h.Target,
+					Type:      "service",
+					Name:      "hello-world-backend",
+				},
+				SkipWhen: !h.CreateServices || !h.SkupperExpose,
+			}, {
+				Doc: "Exposing the deployment via Skupper",
+				Modify: &execute.SkupperExpose{
+					Runner:    h.Runner,
+					Namespace: h.Target,
+					Ports:     []int{8080},
+					Type:      "deployment",
+					Name:      "hello-world-backend",
+				},
+				SkipWhen: h.CreateServices && !h.SkupperExpose,
+			},
+		},
+	}
+	phase.Run()
+
 	if _, err := kube.WaitDeploymentReady("hello-world-backend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -177,6 +221,7 @@ type HelloWorldValidate struct {
 	Runner                  *frame2.Run
 	Namespace               *base.ClusterContext
 	HelloWorldValidateFront HelloWorldValidateFront
+	HelloWorldValidateBack  HelloWorldValidateBack
 
 	frame2.Log
 }
@@ -185,6 +230,7 @@ func (h HelloWorldValidate) Validate() error {
 	if h.Namespace == nil {
 		return fmt.Errorf("HelloWorldValidate configuration error: empty Namespace")
 	}
+
 	if h.HelloWorldValidateFront.Namespace == nil {
 		h.HelloWorldValidateFront.Namespace = h.Namespace
 	}
@@ -193,12 +239,21 @@ func (h HelloWorldValidate) Validate() error {
 	}
 	h.HelloWorldValidateFront.OrSetLogger(h.Log.GetLogger())
 
+	if h.HelloWorldValidateBack.Namespace == nil {
+		h.HelloWorldValidateBack.Namespace = h.Namespace
+	}
+	if h.HelloWorldValidateBack.Runner == nil {
+		h.HelloWorldValidateBack.Runner = h.Runner
+	}
+	h.HelloWorldValidateBack.OrSetLogger(h.Log.GetLogger())
+
 	phase := frame2.Phase{
 		Runner: h.Runner,
 		MainSteps: []frame2.Step{
 			{
 				Validators: []frame2.Validator{
 					&h.HelloWorldValidateFront,
+					&h.HelloWorldValidateBack,
 				},
 			},
 		},
@@ -235,6 +290,49 @@ func (h HelloWorldValidateFront) Validate() error {
 				Validator: &validate.Curl{
 					Namespace:   h.Namespace,
 					Url:         fmt.Sprintf("http://%s:%d", svc, port),
+					Fail400Plus: true,
+					Log:         h.Log,
+				},
+			},
+		},
+	}
+	phase.SetLogger(h.Logger)
+	return phase.Run()
+}
+
+type HelloWorldValidateBack struct {
+	Runner      *frame2.Run
+	Namespace   *base.ClusterContext
+	ServiceName string // default is hello-world-backend
+	ServicePort int    // default is 8080
+	ServicePath string // default is api/hello
+
+	frame2.Log
+}
+
+func (h HelloWorldValidateBack) Validate() error {
+	if h.Namespace == nil {
+		return fmt.Errorf("HelloWorldValidateBack configuration error: empty Namespace")
+	}
+	svc := h.ServiceName
+	if svc == "" {
+		svc = "hello-world-backend"
+	}
+	port := h.ServicePort
+	if port == 0 {
+		port = 8080
+	}
+	path := h.ServicePath
+	if path == "" {
+		path = "api/hello"
+	}
+	phase := frame2.Phase{
+		Runner: h.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &validate.Curl{
+					Namespace:   h.Namespace,
+					Url:         fmt.Sprintf("http://%s:%d/%s", svc, port, path),
 					Fail400Plus: true,
 					Log:         h.Log,
 				},

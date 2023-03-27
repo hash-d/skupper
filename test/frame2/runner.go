@@ -36,6 +36,9 @@ func (r *Run) addMonitor(step *Monitor) error {
 	return nil
 }
 
+// This will cause all active monitors to report their status on the logs.
+//
+// It should generally be run as defer r.Run(), right after the Run creation
 func (r *Run) Report() {
 
 	failed := false
@@ -339,6 +342,11 @@ func (p *Phase) run(id string) error {
 			if err := processStep(t, step, fmt.Sprintf("%v%v.main%d", idPrefix, runner.currentPhase, i), &p.Log); err != nil {
 				savedErr = err
 				if t != nil {
+					// TODO: Interact:
+					// - continue (ignore error)
+					// - hold (show time left for the test)
+					// - kill (run no teardown)
+					// - finish (run teardowns; go to next test if available)
 					t.Errorf("test failed: %v", err)
 				}
 				// TODO this should be pluggable

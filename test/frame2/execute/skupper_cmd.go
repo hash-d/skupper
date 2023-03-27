@@ -21,11 +21,11 @@ type CliSkupper struct {
 	// You can configure any aspects of the command configuration.  However,
 	// the fields Command, Args and Shell from the exec.Cmd element will be
 	// cleared before execution.
-	Cmd
+	Cmd Cmd
 }
 
 func (cs *CliSkupper) Execute() error {
-	log.Printf("execute.CliSkupper")
+	log.Printf("execute.CliSkupper %v", cs.Args)
 	//	log.Printf("%#v", cs)
 	baseArgs := []string{}
 	if cs.Namespace != "" {

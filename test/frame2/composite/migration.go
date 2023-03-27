@@ -28,6 +28,7 @@ type Migrate struct {
 	UndeploySteps       []frame2.Step
 	LinkTo              []*base.ClusterContext
 	LinkFrom            []*base.ClusterContext
+	UnlinkFrom          []*base.ClusterContext // Avoids dangling link configuration
 	DeployBeforeSkupper bool
 	AssertFromEmpty     bool
 
@@ -95,6 +96,25 @@ func (m *Migrate) Execute() error {
 	if !m.DeployBeforeSkupper {
 		deployPhase.Run()
 	}
+
+	var unlinkSteps []frame2.Step
+	for _, l := range m.UnlinkFrom {
+		unlinkSteps = append(unlinkSteps, frame2.Step{
+			Doc: fmt.Sprintf("removing link from %v to %v", l.Namespace, m.From.Namespace),
+			Modify: execute.SkupperUnLink{
+				Name:   fmt.Sprintf("%v-to-%v", l.Namespace, m.From.Namespace),
+				From:   l,
+				To:     m.From,
+				Runner: m.Runner,
+			},
+		})
+	}
+
+	unlinkPhase := frame2.Phase{
+		Runner:    m.Runner,
+		MainSteps: unlinkSteps,
+	}
+	unlinkPhase.Run()
 
 	removalPhase := frame2.Phase{
 		Runner: m.Runner,

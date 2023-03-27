@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/skupper/cli"
 )
@@ -33,14 +34,13 @@ const CmdDefaultTimeout = 2 * time.Minute
 // even uses that structured, embedded.  There are some differences,
 // howeever:
 //
-// - There is a Shell option
-// - A timeout can be defined directly, in addition to a Context
-// - In case both context and timeout are given, the timeout is applied
-//   over the context (ie, a timeout context wrapping the original context)
-// - If neither are provided, there is a default timeout.  If the user
-//   provides their own Context, though, it's up to them to make sure
-//   the command does not run forever.
-//
+//   - There is a Shell option
+//   - A timeout can be defined directly, in addition to a Context
+//   - In case both context and timeout are given, the timeout is applied
+//     over the context (ie, a timeout context wrapping the original context)
+//   - If neither are provided, there is a default timeout.  If the user
+//     provides their own Context, though, it's up to them to make sure
+//     the command does not run forever.
 type Cmd struct {
 	// The command to be executed, as if exec.Command() had been called (ie, it
 	// looks for the command on the PATH, if no slashes on it).  If empty, then
@@ -51,12 +51,16 @@ type Cmd struct {
 	// and Cmd.Args with those returned by exec.Command (ie, we'll let Go find
 	// the path to the command).
 	exec.Cmd
-	Ctx          context.Context
-	Timeout      time.Duration // If not provided, a default timeout of 2 min is used
-	Shell        bool          // if set, Cmd.Path and Cmd.Args are ignored; use Command under sh -c
-	cli.Expect                 // Configures checks on Stdout and Stderr
-	AcceptReturn []int         // consider these return status as a success.  Default only 0
-	FailReturn   []int         // Fail on any of these return status.  Default anything other than 0
+	Ctx           context.Context
+	Timeout       time.Duration // If not provided, a default timeout of 2 min is used
+	Shell         bool          // if set, Cmd.Path and Cmd.Args are ignored; use Command under sh -c
+	cli.Expect                  // Configures checks on Stdout and Stderr
+	AcceptReturn  []int         // consider these return status as a success.  Default only 0
+	FailReturn    []int         // Fail on any of these return status.  Default anything other than 0
+	ForceOutput   bool          // Shows this command's output on log, regardless of environment config
+	ForceNoOutput bool          // No output, regardless of environment config.  Takes precedence over the above
+
+	frame2.Log
 
 	*CmdResult
 
@@ -161,10 +165,12 @@ func (c *Cmd) Execute() error {
 	c.CmdResult.Stderr = stderr.String()
 	c.CmdResult.Err = cmdErr
 
-	if base.IsVerboseCommandOutput() {
-		fmt.Printf("STDOUT:\n%v\n", stdout.String())
-		fmt.Printf("STDERR:\n%v\n", stderr.String())
-		fmt.Printf("Error: %v\n", cmdErr)
+	if !c.ForceNoOutput {
+		if c.ForceOutput || base.IsVerboseCommandOutput() {
+			c.Log.Printf("STDOUT:\n%v\n", stdout.String())
+			c.Log.Printf("STDERR:\n%v\n", stderr.String())
+			c.Log.Printf("Error: %v\n", cmdErr)
+		}
 	}
 
 	var returnedCmdError error
