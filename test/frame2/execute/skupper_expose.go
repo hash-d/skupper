@@ -60,7 +60,7 @@ func (se SkupperExpose) Execute() error {
 	}
 
 	if se.Protocol != "" {
-		args = append(args, "--protocol %s", se.Protocol)
+		args = append(args, "--protocol", se.Protocol)
 	}
 
 	if len(se.TargetPorts) != 0 {

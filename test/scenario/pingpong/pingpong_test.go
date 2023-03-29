@@ -8,6 +8,7 @@
 //
 // Options:
 //
+// TODO
 // - remove service first
 // - remove link first
 // - skupper delete, direct
@@ -163,6 +164,7 @@ func TestPingPong(t *testing.T) {
 		}
 		assert.Assert(t, main.Run())
 
+		// Move all the log below to a new Executor: GreedyRepeatedTester
 		endTime := time.Now()
 
 		delta := endTime.Sub(startTime)

@@ -19,6 +19,7 @@ type SkupperInstall struct {
 	Ctx        context.Context
 	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
 	SkipWait   bool
+	SkipStatus bool
 	Runner     frame2.Run
 }
 
@@ -70,7 +71,40 @@ func (si SkupperInstall) Execute() error {
 				},
 			}},
 		}
-		return phase.Run()
+		err := phase.Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	if !si.SkipStatus {
+		phase := frame2.Phase{
+			Doc:    "Record version and status of Skupper installation",
+			Runner: &si.Runner,
+			MainSteps: []frame2.Step{
+				{
+					Modify: &CliSkupper{
+						Args:      []string{"version"},
+						Namespace: si.Namespace.Namespace,
+						Cmd: Cmd{
+							ForceOutput: true,
+						},
+					},
+				}, {
+					Modify: &CliSkupper{
+						Args:      []string{"status"},
+						Namespace: si.Namespace.Namespace,
+						Cmd: Cmd{
+							ForceOutput: true,
+						},
+					},
+				},
+			},
+		}
+		err := phase.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

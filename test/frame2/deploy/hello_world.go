@@ -20,12 +20,14 @@ type HelloWorld struct {
 	Runner   *frame2.Run
 	Topology *topology.Basic
 
-	// This will create K8S services TODO
+	// This will create K8S services
 	CreateServices bool
 
 	// This will create Skupper services; if CreateServices is also
 	// true, the Skupper service will be based on the K8S service.
-	// Otherwise, it exposes the deployment
+	// Otherwise, it exposes the deployment.
+	//
+	// The Skupper service will use the HTTP protocol
 	SkupperExpose bool
 }
 
@@ -73,13 +75,19 @@ type HelloWorldBackend struct {
 	Target         *base.ClusterContext
 	CreateServices bool
 	SkupperExpose  bool
-	Ctx            context.Context
+	Protocol       string // This will default to http if not specified
+
+	Ctx context.Context
 }
 
 func (h *HelloWorldBackend) Execute() error {
 
-	////////////////////////////////////////////////////////////
 	ctx := frame2.ContextOrDefault(h.Ctx)
+
+	proto := h.Protocol
+	if proto == "" {
+		proto = "http"
+	}
 
 	labels := map[string]string{"app": "hello-world-backend"}
 
@@ -118,6 +126,7 @@ func (h *HelloWorldBackend) Execute() error {
 					Namespace: h.Target,
 					Type:      "service",
 					Name:      "hello-world-backend",
+					Protocol:  proto,
 				},
 				SkipWhen: !h.CreateServices || !h.SkupperExpose,
 			}, {
@@ -128,6 +137,7 @@ func (h *HelloWorldBackend) Execute() error {
 					Ports:     []int{8080},
 					Type:      "deployment",
 					Name:      "hello-world-backend",
+					Protocol:  proto,
 				},
 				SkipWhen: h.CreateServices && !h.SkupperExpose,
 			},
@@ -146,12 +156,19 @@ type HelloWorldFrontend struct {
 	Target         *base.ClusterContext
 	CreateServices bool
 	SkupperExpose  bool
+	Protocol       string // This will default to http if not specified
 
 	Ctx context.Context
 }
 
 func (h *HelloWorldFrontend) Execute() error {
+
 	ctx := frame2.ContextOrDefault(h.Ctx)
+
+	proto := h.Protocol
+	if proto == "" {
+		proto = "http"
+	}
 
 	labels := map[string]string{"app": "hello-world-frontend"}
 
@@ -190,6 +207,7 @@ func (h *HelloWorldFrontend) Execute() error {
 					Namespace: h.Target,
 					Type:      "service",
 					Name:      "hello-world-frontend",
+					Protocol:  proto,
 				},
 				SkipWhen: !h.CreateServices || !h.SkupperExpose,
 			}, {
@@ -200,6 +218,7 @@ func (h *HelloWorldFrontend) Execute() error {
 					Ports:     []int{8080},
 					Type:      "deployment",
 					Name:      "hello-world-frontend",
+					Protocol:  proto,
 				},
 				SkipWhen: h.CreateServices && !h.SkupperExpose,
 			},
