@@ -2,11 +2,15 @@ package validate
 
 import (
 	"log"
+
+	"github.com/skupperproject/skupper/test/frame2"
 )
 
 type Dummy struct {
 	Results []error
 	round   int
+
+	frame2.Log
 }
 
 func (d *Dummy) Validate() error {

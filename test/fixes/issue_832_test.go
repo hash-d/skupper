@@ -223,11 +223,11 @@ func TestIssue832(t *testing.T) {
 				},
 				Validators: []frame2.Validator{
 					// This is failing; described as Finding 2 / Problem B on SKUPPER-310
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
@@ -240,11 +240,11 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "After the initial 60s from the previous step, give at most 2m for the name to appear",
 				Validators: []frame2.Validator{
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
@@ -257,11 +257,11 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
-					validate.Curl{
+					&validate.Curl{
 						Namespace: prv1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
-					validate.Curl{
+					&validate.Curl{
 						Namespace: pub1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
@@ -375,11 +375,11 @@ func TestIssue832(t *testing.T) {
 					AutoTeardown:           true,
 				},
 				Validators: []frame2.Validator{
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: pub1,
 						Name:      "backend-0.backend",
 					},
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: prv1,
 						Name:      "backend-0.backend",
 					},
@@ -394,11 +394,11 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
-					validate.Curl{
+					&validate.Curl{
 						Namespace: prv1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
-					validate.Curl{
+					&validate.Curl{
 						Namespace: pub1,
 						Url:       "http://backend-0.backend:8080/api/hello",
 					},
@@ -464,11 +464,11 @@ func TestIssue832(t *testing.T) {
 					AutoTeardown:           true,
 				},
 				Validators: []frame2.Validator{
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: pub1,
 						Name:      "skupper-backend-0.skupper-backend",
 					},
-					validates.Nslookup{
+					&validates.Nslookup{
 						Namespace: prv1,
 						Name:      "skupper-backend-0.skupper-backend",
 					},
@@ -483,11 +483,11 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Ensures that the backend is actually available, by accessing it via Curl",
 				Validators: []frame2.Validator{
-					validate.Curl{
+					&validate.Curl{
 						Namespace: prv1,
 						Url:       "http://skupper-backend-0.skupper-backend:8080/api/hello",
 					},
-					validate.Curl{
+					&validate.Curl{
 						Namespace: pub1,
 						Url:       "http://skupper-backend-0.skupper-backend:8080/api/hello",
 					},

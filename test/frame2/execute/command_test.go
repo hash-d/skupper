@@ -32,6 +32,8 @@ type cmdValidator struct {
 	errorOnExpect       bool
 	nonCmdErr           bool
 	resultCommunication *CmdResult
+
+	frame2.Log
 }
 
 func (ct cmdValidator) Validate() error {
@@ -103,14 +105,14 @@ var tests = frame2.Phase{
 	MainSteps: []frame2.Step{
 		{
 			Name: "positive-expected",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "true",
 				},
 			},
 		}, {
 			Name: "negative-unexpected",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "false",
 				},
@@ -118,7 +120,7 @@ var tests = frame2.Phase{
 			ExpectError: true,
 		}, {
 			Name: "positive-unexpected",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "true",
 				},
@@ -127,7 +129,7 @@ var tests = frame2.Phase{
 			ExpectError: true,
 		}, {
 			Name: "negative-expected",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:    "false",
 					FailReturn: []int{0},
@@ -135,7 +137,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "args-look",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "echo",
 					Cmd: exec.Cmd{
@@ -148,7 +150,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "args-look-not-found",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: unknownCommand,
 				},
@@ -157,7 +159,7 @@ var tests = frame2.Phase{
 		}, {
 			Name: "args-specific",
 			Doc:  "Command, not Path, but with slashes",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "/usr/bin/echo",
 					Cmd: exec.Cmd{
@@ -171,7 +173,7 @@ var tests = frame2.Phase{
 		}, {
 			Name: "args-specific-not-found",
 			Doc:  "Command, not Path, but with slashes; not found",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "/usr/bin/" + unknownCommand,
 					Cmd: exec.Cmd{
@@ -182,7 +184,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "path-args",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Cmd: exec.Cmd{
 						Path: "/usr/bin/echo",
@@ -198,7 +200,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "path-no-args",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Cmd: exec.Cmd{
 						Path: "/usr/bin/sleep",
@@ -216,7 +218,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "empty-shell",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "",
 					Shell:   true,
@@ -227,7 +229,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "shell-args",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "echo hello",
 					Shell:   true,
@@ -238,7 +240,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "shell-no-args",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "cal",
 					Shell:   true,
@@ -250,7 +252,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "shell-not-found",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: unknownCommand,
 					Shell:   true,
@@ -263,7 +265,7 @@ var tests = frame2.Phase{
 		}, {
 			Name: "non-exit-error-failure",
 			Doc:  "With non-ExitError failure, do we get strings, or does stuff fail?",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "date",
 					Expect: cli.Expect{
@@ -280,7 +282,7 @@ var tests = frame2.Phase{
 		}, {
 			Name: "timeout",
 			Doc:  "Even with a timeout, we should get the output",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "echo hello; /usr/bin/sleep 60",
 					Shell:   true,
@@ -294,7 +296,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "accept-list-ok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 2",
 					Shell:        true,
@@ -303,7 +305,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "accept-list-nok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 4",
 					Shell:        true,
@@ -313,7 +315,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "accept-list-nok-with-zero",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 0",
 					Shell:        true,
@@ -322,7 +324,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "fail-list-ok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:    "exit 4",
 					Shell:      true,
@@ -331,7 +333,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "fail-list-nok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:    "exit 2",
 					Shell:      true,
@@ -341,7 +343,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "both-lists-fail-ok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 4",
 					Shell:        true,
@@ -352,7 +354,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "both-lists-succes-ok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 2",
 					Shell:        true,
@@ -362,7 +364,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "both-lists-neither-nok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 100",
 					Shell:        true,
@@ -373,7 +375,7 @@ var tests = frame2.Phase{
 			},
 		}, {
 			Name: "both-lists-both-nok",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command:      "exit 3",
 					Shell:        true,
@@ -385,7 +387,7 @@ var tests = frame2.Phase{
 		}, {
 			Name: "TODO",
 			Doc:  "resultCommunication and stdout/stderr supplied by the user",
-			Validator: cmdValidator{
+			Validator: &cmdValidator{
 				cmd: Cmd{
 					Command: "false",
 				},

@@ -139,7 +139,7 @@ func (h *HelloWorldBackend) Execute() error {
 					Name:      "hello-world-backend",
 					Protocol:  proto,
 				},
-				SkipWhen: h.CreateServices && !h.SkupperExpose,
+				SkipWhen: h.CreateServices || !h.SkupperExpose,
 			},
 		},
 	}
@@ -220,7 +220,7 @@ func (h *HelloWorldFrontend) Execute() error {
 					Name:      "hello-world-frontend",
 					Protocol:  proto,
 				},
-				SkipWhen: h.CreateServices && !h.SkupperExpose,
+				SkipWhen: h.CreateServices || !h.SkupperExpose,
 			},
 		},
 	}

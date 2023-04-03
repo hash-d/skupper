@@ -69,7 +69,7 @@ func Test984(t *testing.T) {
 					"skupper.io/proxy":   "http",
 				},
 			},
-			Validator: validate.SkupperService{
+			Validator: &validate.SkupperService{
 				Namespace: pub,
 				Name:      "hello-world-frontend",
 			},
@@ -87,7 +87,7 @@ func Test984(t *testing.T) {
 					"skupper.io/port": "8080:8080,80:8080",
 				},
 			},
-			Validator: validate.Container{
+			Validator: &validate.Container{
 				Namespace:    pub,
 				PodSelector:  validate.ServiceControllerSelector,
 				RestartCount: 0,
@@ -101,12 +101,12 @@ func Test984(t *testing.T) {
 			Name: "check-if-restored",
 			Doc:  "After the previous step, regardless whether it failed; does the service controller eventually come back up?  And is the change active?",
 			Validators: []frame2.Validator{
-				validate.Container{
+				&validate.Container{
 					Namespace:   pub,
 					PodSelector: validate.ServiceControllerSelector,
 					StatusCheck: true,
 				},
-				validate.Curl{
+				&validate.Curl{
 					Namespace: pub,
 					Url:       "http://hello-world-frontend:80",
 				},

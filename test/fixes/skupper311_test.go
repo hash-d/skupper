@@ -171,7 +171,7 @@ func Test311(t *testing.T) {
 					Labels:    map[string]string{"app": "hello-world-frontend"},
 					Ports:     []int32{8080},
 				},
-				Validator: validate.Curl{
+				Validator: &validate.Curl{
 					Namespace: pub1,
 					Url:       "http://hello-world-frontend:8080",
 				},
@@ -185,7 +185,7 @@ func Test311(t *testing.T) {
 					Labels:    map[string]string{"app": "hello-world-backend"},
 					Ports:     []int32{8080},
 				},
-				Validator: validate.Curl{
+				Validator: &validate.Curl{
 					Namespace: prv1,
 					Url:       "http://hello-world-backend:8080/api/hello",
 				},
@@ -201,7 +201,7 @@ func Test311(t *testing.T) {
 						types.AddressQualifier: "hello-world-frontend",
 					},
 				},
-				Validator: validate.Curl{
+				Validator: &validate.Curl{
 					Namespace: prv1,
 					Url:       "http://hello-world-frontend:8080",
 				},
@@ -216,7 +216,7 @@ func Test311(t *testing.T) {
 						types.AddressQualifier: "hello-world-backend",
 					},
 				},
-				Validator: validate.Curl{
+				Validator: &validate.Curl{
 					Namespace: pub1,
 					Url:       "http://hello-world-backend:8080/api/hello",
 				},
@@ -242,7 +242,7 @@ func Test311(t *testing.T) {
 							},
 							Replicas: 0,
 						},
-						Validator: validate.Curl{
+						Validator: &validate.Curl{
 							Namespace: prv1,
 							Url:       "http://hello-world-frontend:8080",
 						},
@@ -325,7 +325,7 @@ func Test311(t *testing.T) {
 							},
 							Replicas: 0,
 						},
-						Validator: validate.Curl{
+						Validator: &validate.Curl{
 							Namespace: pub2,
 							Url:       "http://hello-world-backend:8080/api/hello",
 						},
@@ -428,7 +428,7 @@ func Test311(t *testing.T) {
 							},
 							Replicas: 0,
 						},
-						Validator: validate.Curl{
+						Validator: &validate.Curl{
 							Namespace: prv2,
 							Url:       "http://hello-world-frontend:8080",
 						},
@@ -533,7 +533,7 @@ func Test311(t *testing.T) {
 							},
 							Replicas: 0,
 						},
-						Validator: validate.Curl{
+						Validator: &validate.Curl{
 							Namespace: pub2,
 							Url:       "http://hello-world-backend:8080/api/hello",
 						},

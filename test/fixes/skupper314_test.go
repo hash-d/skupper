@@ -52,7 +52,7 @@ func TestSkupper314(t *testing.T) {
 
 	var pubBackDoesntWork = frame2.Step{
 		Doc: "Validate backend from pub doesnt work",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   pub,
 			Url:         "http://hello-world-backend-k8s-service:8080/api/hello",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
@@ -66,7 +66,7 @@ func TestSkupper314(t *testing.T) {
 
 	var prvFrontDoesntWork = frame2.Step{
 		Doc: "Validate frontend from prv doesnt work",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   prv,
 			Url:         "http://hello-world-frontend-k8s-service:8080",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
@@ -80,7 +80,7 @@ func TestSkupper314(t *testing.T) {
 
 	var pubBackWorks = frame2.Step{
 		Doc: "Validate backend from pub",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   pub,
 			Url:         "http://hello-world-backend-k8s-service:8080/api/hello",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
@@ -92,7 +92,7 @@ func TestSkupper314(t *testing.T) {
 
 	var pubFrontWorks = frame2.Step{
 		Doc: "Validate frontend from pub",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   pub,
 			Url:         "http://hello-world-frontend-k8s-service:8080",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
@@ -104,7 +104,7 @@ func TestSkupper314(t *testing.T) {
 
 	var prvBackWorks = frame2.Step{
 		Doc: "Validate backend from prv",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   prv,
 			Url:         "http://hello-world-backend-k8s-service:8080/api/hello",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
@@ -116,7 +116,7 @@ func TestSkupper314(t *testing.T) {
 
 	var prvFrontWorks = frame2.Step{
 		Doc: "Validate frontend from prv",
-		Validator: validate.Curl{
+		Validator: &validate.Curl{
 			Namespace:   prv,
 			Url:         "http://hello-world-frontend-k8s-service:8080",
 			CurlOptions: tools.CurlOpts{Timeout: 10},
