@@ -16,6 +16,7 @@ import (
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/pkg/qdr"
 	"github.com/skupperproject/skupper/pkg/utils"
+	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/skupper/console"
@@ -27,28 +28,32 @@ import (
 // InitTester runs `skupper init` and validates output, console,
 // as well as skupper resources that should be availble in the cluster.
 type InitTester struct {
-	ConsoleAuth           string
-	ConsoleUser           string
-	ConsolePassword       string
-	Ingress               string
-	ConsoleIngress        string
-	RouterDebugMode       string
-	RouterLogging         string
-	RouterMode            string
-	RouterCPU             string
-	RouterMemory          string
-	ControllerCPU         string
-	ControllerMemory      string
-	RouterCPULimit        string
-	RouterMemoryLimit     string
-	ControllerCPULimit    string
-	ControllerMemoryLimit string
-	SiteName              string
-	EnableConsole         bool
-	EnableFlowCollector   bool
-	RunAsUser             string
-	RunAsGroup            string
-	Podman                PodmanInitOptions
+	ConsoleAuth             string
+	ConsoleUser             string
+	ConsolePassword         string
+	Ingress                 string
+	ConsoleIngress          string
+	RouterDebugMode         string
+	RouterLogging           string
+	RouterMode              string
+	RouterCPU               string
+	RouterMemory            string
+	ControllerCPU           string
+	ControllerMemory        string
+	RouterCPULimit          string
+	RouterMemoryLimit       string
+	ControllerCPULimit      string
+	ControllerMemoryLimit   string
+	ConfigSyncCPURequest    string
+	ConfigSyncCPULimit      string
+	ConfigSyncMemoryRequest string
+	ConfigSyncMemoryLimit   string
+	SiteName                string
+	EnableConsole           bool
+	EnableFlowCollector     bool
+	RunAsUser               string
+	RunAsGroup              string
+	Podman                  PodmanInitOptions
 }
 
 type PodmanInitOptions struct {
@@ -113,8 +118,20 @@ func (s *InitTester) Command(platform types.Platform, cluster *base.ClusterConte
 	if s.ControllerCPULimit != "" {
 		args = append(args, "--controller-cpu-limit", s.ControllerCPULimit)
 	}
-	if s.ControllerMemoryLimit != "" {
-		args = append(args, "--controller-memory-limit", s.ControllerMemoryLimit)
+	if s.ControllerCPULimit != "" {
+		args = append(args, "--controller-cpu-limit", s.ControllerCPULimit)
+	}
+	if s.ConfigSyncCPURequest != "" {
+		args = append(args, "--config-sync-cpu", s.ConfigSyncCPURequest)
+	}
+	if s.ConfigSyncCPULimit != "" {
+		args = append(args, "--config-sync-cpu-limit", s.ConfigSyncCPULimit)
+	}
+	if s.ConfigSyncMemoryRequest != "" {
+		args = append(args, "--config-sync-memory", s.ConfigSyncMemoryRequest)
+	}
+	if s.ConfigSyncMemoryLimit != "" {
+		args = append(args, "--config-sync-memory-limit", s.ConfigSyncMemoryLimit)
 	}
 	if s.SiteName != "" {
 		args = append(args, "--site-name", s.SiteName)
@@ -240,12 +257,27 @@ func (s *InitTester) ValidateKubernetes(cluster *base.ClusterContext, stdout, st
 	if err = s.validateControllerCPUMemory(cluster); err != nil {
 		return
 	}
+	//
+	// Validate ConfigSync
+	if err = (validate.Container{
+		Namespace:     cluster,
+		PodSelector:   validate.RouterSelector,
+		ContainerName: types.ConfigSyncContainerName,
+		ExpectExactly: 1,
+		CPULimit:      s.ConfigSyncCPULimit,
+		CPURequest:    s.ConfigSyncCPURequest,
+		MemoryLimit:   s.ConfigSyncMemoryLimit,
+		MemoryRequest: s.ConfigSyncMemoryRequest,
+	}.ValidateMe()); err != nil {
+		return
+	}
 
 	// Validating security context
 	log.Println("Validating deployment pod security context")
 	if err = s.validatePodSecurityContext(cluster); err != nil {
 		return
 	}
+
 	return
 }
 
