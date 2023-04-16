@@ -4,18 +4,25 @@
 package template
 
 import (
+	"fmt"
 	"testing"
-	"time"
 
 	"github.com/skupperproject/skupper/test/frame2"
+	"github.com/skupperproject/skupper/test/frame2/deploy"
 	"github.com/skupperproject/skupper/test/frame2/environment"
-	"github.com/skupperproject/skupper/test/frame2/execute"
+	"github.com/skupperproject/skupper/test/frame2/topology"
 	"gotest.tools/assert"
 )
 
 func TestPatientPortalTemplate(t *testing.T) {
 	r := &frame2.Run{
 		T: t,
+	}
+	defer r.Finalize()
+
+	env := environment.PatientPortalDefault{
+		Runner:       r,
+		AutoTearDown: true,
 	}
 
 	setup := frame2.Phase{
@@ -24,30 +31,32 @@ func TestPatientPortalTemplate(t *testing.T) {
 		Doc:    "Deploy Patient Portal on the default topology",
 		Setup: []frame2.Step{
 			{
-				Name: "Deploy Patient Portal",
-				Doc:  "Deploy Patient Portal",
-				Modify: environment.PatientPortalDefault{
-					Runner:       r,
-					AutoTearDown: true,
-				},
+				Doc:    "Deploy Patient Portal",
+				Modify: &env,
 			},
 		},
 	}
 
 	assert.Assert(t, setup.Run())
 
+	front_ns, err := env.TopoReturn.Get(topology.Public, 1)
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("failed to get pub-1: %v", err))
+	}
+
 	main := frame2.Phase{
 		Runner: r,
-		Name:   "Replace me",
-		Doc:    "Here goes the steps of the actual test",
+		Name:   "sample-tests",
+		Doc:    "Replace these by your modifications and tests",
 		MainSteps: []frame2.Step{
 			{
-				Modify: execute.Function{
-					Fn: func() error {
-						time.Sleep(time.Minute * 10)
-						return nil
+				Validators: []frame2.Validator{
+					&deploy.PatientValidatePayment{
+						Runner:    r,
+						Namespace: front_ns,
 					},
 				},
+				ValidatorFinal: true,
 			},
 		},
 	}

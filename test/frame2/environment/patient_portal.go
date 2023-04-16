@@ -14,9 +14,13 @@ type PatientPortalDefault struct {
 	Name         string
 	Runner       *frame2.Run
 	AutoTearDown bool
+
+	// Return
+
+	TopoReturn topology.Basic
 }
 
-func (p PatientPortalDefault) Execute() error {
+func (p *PatientPortalDefault) Execute() error {
 
 	name := p.Name
 	if name == "" {
@@ -30,6 +34,8 @@ func (p PatientPortalDefault) Execute() error {
 		Name:           name,
 		TestRunnerBase: &baseRunner,
 	}
+
+	p.TopoReturn = topoSimplest
 
 	execute := frame2.Phase{
 		Runner: p.Runner,

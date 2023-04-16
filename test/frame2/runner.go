@@ -4,17 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"testing"
 )
 
 type Run struct {
-	T            *testing.T
-	Doc          string // TODO this is currently unused (ie, it's not printed)
-	savedT       *testing.T
-	currentPhase int
-	monitors     []*Monitor
-	ctx          context.Context
-	cancelCtx    context.CancelFunc
+	T               *testing.T
+	Doc             string // TODO this is currently unused (ie, it's not printed)
+	savedT          *testing.T
+	currentPhase    int
+	monitors        []*Monitor
+	finalValidators []Validator
+	ctx             context.Context
+	cancelCtx       context.CancelFunc
+	root            *Run
 }
 
 func (r *Run) GetContext() context.Context {
@@ -29,11 +32,33 @@ func (r *Run) CancelContext() {
 	r.cancelCtx()
 }
 
-func (r *Run) addMonitor(step *Monitor) error {
+func (r *Run) addMonitor(step *Monitor) {
 
 	r.monitors = append(r.monitors, step)
+}
 
-	return nil
+func (r *Run) addFinalValidators(v []Validator) {
+	if r.root == nil {
+		r.finalValidators = append(r.finalValidators, v...)
+	} else {
+		r.root.finalValidators = append(r.root.finalValidators, v...)
+	}
+}
+
+// Run steps that are still part of the test, but must be run at its very end,
+// right before the tear down.  Failures here will count as test failure
+func (r *Run) Finalize() {
+	log.Printf("[R] Running finalizers")
+
+	if len(r.finalValidators) > 0 {
+		log.Printf("[R] Running final validators")
+		for _, v := range r.finalValidators {
+			err := v.Validate()
+			if err != nil {
+				r.savedT.Errorf("final validator failed: %v", err)
+			}
+		}
+	}
 }
 
 // This will cause all active monitors to report their status on the logs.
@@ -71,7 +96,8 @@ type Phase struct {
 	Log
 }
 
-func processStep(t *testing.T, step Step, id string, Log FrameLogger) error {
+// TODO: move this into Phase?
+func processStep(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) error {
 	// TODO: replace [R] with own logger with Prefix?
 	var err error
 
@@ -86,7 +112,7 @@ func processStep(t *testing.T, step Step, id string, Log FrameLogger) error {
 		_ = t.Run(step.Name, func(t *testing.T) {
 			//log.Printf("[R] %v current test: %q", id, t.Name())
 			Log.Printf("[R] %v Doc: %v", id, step.Doc)
-			processErr := processStep_(t, step, id, Log)
+			processErr := processStep_(t, step, id, Log, p)
 			if processErr != nil {
 				// This makes it easier to find the failures in log files
 				Log.Printf("[R] test %v - %q failed", id, t.Name())
@@ -100,12 +126,12 @@ func processStep(t *testing.T, step Step, id string, Log FrameLogger) error {
 		// TODO.  Add the step number (like 2.1.3)
 		//Log.Printf("[R] %v current test: %q", id, t.Name())
 		Log.Printf("[R] %v doc %q", id, step.Doc)
-		err = processStep_(t, step, id, Log)
+		err = processStep_(t, step, id, Log, p)
 	}
 	return err
 
 }
-func processStep_(t *testing.T, step Step, id string, Log FrameLogger) error {
+func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) error {
 	if step.Modify != nil {
 		Log.Printf("[R] %v Modifier %T", id, step.Modify)
 		var err error
@@ -133,7 +159,7 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger) error {
 	for i, subStep := range subStepList {
 		_, err := Retry{
 			Fn: func() error {
-				return processStep(t, *subStep, fmt.Sprintf("%v.sub%d", id, i), Log)
+				return processStep(t, *subStep, fmt.Sprintf("%v.sub%d", id, i), Log, p)
 			},
 			Options: step.SubstepRetry,
 		}.Run()
@@ -149,6 +175,9 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger) error {
 	}
 
 	if len(validatorList) > 0 {
+		if step.ValidatorFinal {
+			p.savedRunner.addFinalValidators(validatorList)
+		}
 		fn := func() error {
 			someFailure := false
 			someSuccess := false
@@ -227,7 +256,7 @@ func (p *Phase) runP(id string) error {
 		ok := p.Runner.T.Run(p.Name, func(t *testing.T) {
 			//log.Printf("[R] %vcurrent test: %q", idPrefix, t.Name())
 			p.Log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
-			p.Runner = &Run{T: t}
+			p.Runner = &Run{T: t, root: p.Runner}
 			err = p.run(id)
 			p.Log.Printf("[R] %vSubtest %q completed", idPrefix, t.Name())
 		})
@@ -251,8 +280,8 @@ func (p *Phase) runP(id string) error {
 	return err
 }
 
-func (p *Phase) addMonitor(monitor *Monitor) error {
-	return p.savedRunner.addMonitor(monitor)
+func (p *Phase) addMonitor(monitor *Monitor) {
+	p.savedRunner.addMonitor(monitor)
 
 }
 
@@ -322,7 +351,7 @@ func (p *Phase) run(id string) error {
 					}
 				}
 			}
-			if err := processStep(t, step, fmt.Sprintf("%v%v.set%d", idPrefix, runner.currentPhase, i), &p.Log); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("%v%v.set%d", idPrefix, runner.currentPhase, i), &p.Log, p); err != nil {
 				if t != nil {
 					t.Fatalf("setup failed: %v", err)
 				}
@@ -339,7 +368,7 @@ func (p *Phase) run(id string) error {
 	if len(p.MainSteps) > 0 {
 		// log.Printf("Starting main steps")
 		for i, step := range p.MainSteps {
-			if err := processStep(t, step, fmt.Sprintf("%v%v.main%d", idPrefix, runner.currentPhase, i), &p.Log); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("%v%v.main%d", idPrefix, runner.currentPhase, i), &p.Log, p); err != nil {
 				savedErr = err
 				if t != nil {
 					// TODO: Interact:
@@ -382,7 +411,7 @@ func (p *Phase) teardown() {
 		p.Log.Printf("Starting teardown")
 		// This one runs in normal order, since the user listed them themselves
 		for i, step := range p.Teardown {
-			if err := processStep(t, step, fmt.Sprintf("down%v", i), &p.Log); err != nil {
+			if err := processStep(t, step, fmt.Sprintf("down%v", i), &p.Log, p); err != nil {
 				if t == nil {
 					p.Log.Printf("Tear down step %d failed: %v", i, err)
 				} else {

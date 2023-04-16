@@ -20,6 +20,7 @@ type Step struct {
 	Validator      Validator
 	Validators     []Validator
 	ValidatorRetry RetryOptions
+	ValidatorFinal bool // final validators are re-run at the test's end
 	Substep        *Step
 	Substeps       []*Step
 	SubstepRetry   RetryOptions

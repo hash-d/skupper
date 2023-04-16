@@ -8,6 +8,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
+	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
 	"github.com/skupperproject/skupper/test/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -50,6 +51,11 @@ func (p PatientPortal) Execute() error {
 		return fmt.Errorf("failed to get payment processor namespace")
 	}
 
+	front_ns, err := (*p.Topology).Get(topology.Public, 1)
+	if err != nil {
+		return fmt.Errorf("failed to get frontend namespace")
+	}
+
 	phase := frame2.Phase{
 		Runner: p.Runner,
 		Doc:    "Install Patient Portal pieces",
@@ -74,7 +80,7 @@ func (p PatientPortal) Execute() error {
 				Doc: "Install Patient Portal Payment Frontend",
 				Modify: &PatientFrontend{
 					Runner:         p.Runner,
-					Target:         payment_ns,
+					Target:         front_ns,
 					CreateServices: true,
 					SkupperExpose:  p.SkupperExpose,
 				},
@@ -292,5 +298,48 @@ func (p PatientFrontend) Execute() error {
 			},
 		},
 	}
+	return phase.Run()
+}
+
+type PatientValidatePayment struct {
+	Runner      *frame2.Run
+	Namespace   *base.ClusterContext
+	ServiceName string // default is payment-processor
+	ServicePort int    // default is 8080
+	ServicePath string // default is api/pay
+
+	frame2.Log
+}
+
+func (p PatientValidatePayment) Validate() error {
+	if p.Namespace == nil {
+		return fmt.Errorf("HelloWorldValidateBack configuration error: empty Namespace")
+	}
+	svc := p.ServiceName
+	if svc == "" {
+		svc = "payment-processor"
+	}
+	port := p.ServicePort
+	if port == 0 {
+		port = 8080
+	}
+	path := p.ServicePath
+	if path == "" {
+		path = "api/pay"
+	}
+	phase := frame2.Phase{
+		Runner: p.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &validate.Curl{
+					Namespace:   p.Namespace,
+					Url:         fmt.Sprintf("http://%s:%d/%s", svc, port, path),
+					Fail400Plus: true,
+					Log:         p.Log,
+				},
+			},
+		},
+	}
+	phase.SetLogger(p.Logger)
 	return phase.Run()
 }
