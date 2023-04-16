@@ -53,7 +53,13 @@ func (c *contextHolder) Get(kind topology.ClusterType, number int) (*base.Cluste
 	if len(kindList) == 0 {
 		return nil, fmt.Errorf("no clusterContext of type %v on the topology", kind)
 	}
-	target := number - 1
+	remainder := number % len(kindList)
+	var target int
+	if remainder < 0 {
+		target = len(kindList) + remainder
+	} else {
+		target = remainder
+	}
 	return kindList[target], nil
 }
 
