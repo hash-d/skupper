@@ -22,6 +22,8 @@ type CliSkupper struct {
 	// the fields Command, Args and Shell from the exec.Cmd element will be
 	// cleared before execution.
 	Cmd Cmd
+
+	path string
 }
 
 func (cs *CliSkupper) Execute() error {
@@ -36,7 +38,10 @@ func (cs *CliSkupper) Execute() error {
 		}
 	}
 	cmd := cs.Cmd
-	cmd.Command = "skupper"
+	cmd.Command = cs.path
+	if cmd.Command == "" {
+		cmd.Command = "skupper"
+	}
 	cmd.Cmd.Args = append(baseArgs, cs.Args...)
 
 	err := cmd.Execute()
@@ -45,4 +50,8 @@ func (cs *CliSkupper) Execute() error {
 		return fmt.Errorf("execute.CliSkupper: %w", err)
 	}
 	return nil
+}
+
+func (c *CliSkupper) SetSkupperCliPath(path string) {
+	c.path = path
 }

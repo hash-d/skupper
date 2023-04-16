@@ -9,6 +9,7 @@ import (
 
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
+	"github.com/skupperproject/skupper/test/frame2/disruptors"
 	"github.com/skupperproject/skupper/test/frame2/environment"
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"gotest.tools/assert"
@@ -19,6 +20,12 @@ func TestPatientPortalTemplate(t *testing.T) {
 		T: t,
 	}
 	defer r.Finalize()
+
+	r.AllowDisruptors(
+		[]frame2.Disruptor{
+			&disruptors.UpgradeAndFinalize{},
+		},
+	)
 
 	env := environment.PatientPortalDefault{
 		Runner:       r,

@@ -291,6 +291,7 @@ func (t *TopologyBuild) Execute() error {
 				}, {
 					Modify: execute.SkupperInstallSimple{
 						Namespace: context,
+						Runner:    t.Runner,
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation || topoItem.SkipSkupperDeploy,
 				},

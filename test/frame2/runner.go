@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"testing"
 )
 
@@ -18,6 +19,7 @@ type Run struct {
 	ctx             context.Context
 	cancelCtx       context.CancelFunc
 	root            *Run
+	disruptor       Disruptor
 }
 
 func (r *Run) GetContext() context.Context {
@@ -26,6 +28,15 @@ func (r *Run) GetContext() context.Context {
 		r.savedT.Cleanup(r.cancelCtx)
 	}
 	return r.ctx
+}
+
+// Return ctx if not nil.  If nil, return the runner's default context
+func (r *Run) OrDefaultContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return r.GetContext()
+	}
+	return ctx
+
 }
 
 func (r *Run) CancelContext() {
@@ -38,26 +49,43 @@ func (r *Run) addMonitor(step *Monitor) {
 }
 
 func (r *Run) addFinalValidators(v []Validator) {
+	root := r.getRoot()
+	root.finalValidators = append(root.finalValidators, v...)
+}
+
+func (r *Run) getRoot() *Run {
+	//	if r == nil {
+	//		return nil
+	//	}
 	if r.root == nil {
-		r.finalValidators = append(r.finalValidators, v...)
+		return r
 	} else {
-		r.root.finalValidators = append(r.root.finalValidators, v...)
+		return r.root
 	}
 }
 
 // Run steps that are still part of the test, but must be run at its very end,
 // right before the tear down.  Failures here will count as test failure
 func (r *Run) Finalize() {
+	if d, ok := r.getRoot().disruptor.(PreFinalizerHook); ok {
+		log.Printf("[R] Running pre-finalizer hook")
+		err := d.PreFinalizerHook(r)
+		if err != nil {
+			r.T.Errorf("pre-finalizer hook failed: %v", err)
+		}
+	}
 	log.Printf("[R] Running finalizers")
 
 	if len(r.finalValidators) > 0 {
-		log.Printf("[R] Running final validators")
-		for _, v := range r.finalValidators {
-			err := v.Validate()
-			if err != nil {
-				r.savedT.Errorf("final validator failed: %v", err)
+		r.savedT.Run("final-validator-re-run", func(t *testing.T) {
+			log.Printf("[R] Running final validators")
+			for _, v := range r.finalValidators {
+				err := v.Validate()
+				if err != nil {
+					r.savedT.Errorf("final validator failed: %v", err)
+				}
 			}
-		}
+		})
 	}
 }
 
@@ -76,6 +104,42 @@ func (r *Run) Report() {
 	if failed {
 		r.savedT.Errorf("At least one monitor failed")
 	}
+
+}
+
+// List the disruptors that a test accepts, and initialize a disruptor if
+// SKUPPER_TEST_DISRUPTOR set on the environment matches a disruptor from the list.
+//
+// If no matches to the environment variable, the test will be skipped in this
+// run (ie, a disruptor test was requested, but the test does not allow for it).
+//
+// If the environment variable is empty, this is a no-op.
+//
+// Attention when calling with disruptors that use pointer reference methods: define
+// them on the list as a reference to the struct.  Otherwise, the pointer reference
+// methods will not be part of the method set, and some interfaces may not match
+func (r *Run) AllowDisruptors(list []Disruptor) {
+	kind := os.Getenv("SKUPPER_TEST_DISRUPTOR")
+
+	if kind == "" {
+		// No disruptor requested
+		return
+	}
+
+	if r.getRoot().disruptor != nil {
+		r.savedT.Fatalf("attempt to re-define the disruptor. Was %s", r.getRoot().disruptor)
+	}
+
+	for _, i := range list {
+		if d, ok := i.(Disruptor); ok {
+			if d.DisruptorEnvValue() == kind {
+				log.Printf("DISRUPTOR: %v", kind)
+				r.getRoot().disruptor = d
+				return
+			}
+		}
+	}
+	r.savedT.Skipf("This test does not support the disruptor %v", kind)
 
 }
 
@@ -132,12 +196,18 @@ func processStep(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) 
 
 }
 func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) error {
+	disruptor := p.savedRunner.getRoot().disruptor
+	if disruptor != nil {
+		if disruptor, ok := disruptor.(Inspector); ok {
+			disruptor.Inspect(step, *p)
+		}
+	}
 	if step.Modify != nil {
 		Log.Printf("[R] %v Modifier %T", id, step.Modify)
 		var err error
 		if phase, ok := step.Modify.(Phase); ok {
 			if phase.Runner == nil {
-				phase.Runner = &Run{T: t}
+				phase.Runner = &Run{T: t, root: p.Runner.getRoot()}
 			}
 			if phase.Name == "" {
 				err = phase.runP(fmt.Sprintf("%v.inner", id))
@@ -256,7 +326,7 @@ func (p *Phase) runP(id string) error {
 		ok := p.Runner.T.Run(p.Name, func(t *testing.T) {
 			//log.Printf("[R] %vcurrent test: %q", idPrefix, t.Name())
 			p.Log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
-			p.Runner = &Run{T: t, root: p.Runner}
+			p.Runner = &Run{T: t, root: p.Runner.getRoot()}
 			err = p.run(id)
 			p.Log.Printf("[R] %vSubtest %q completed", idPrefix, t.Name())
 		})
@@ -311,7 +381,6 @@ func (p *Phase) run(id string) error {
 	if p.previousRun && p.Runner != p.savedRunner {
 		p.Log.Printf("saved: %v, new: %v", p.savedRunner, p.Runner)
 		return fmt.Errorf("Phase.Run configuration error: the Runner was changed")
-
 	} else {
 		p.savedRunner = p.Runner
 	}

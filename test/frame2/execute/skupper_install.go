@@ -9,7 +9,6 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
-	"github.com/skupperproject/skupper/test/utils/constants"
 )
 
 // For a defaults alternative, check SkupperInstallSimple
@@ -20,9 +19,16 @@ type SkupperInstall struct {
 	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
 	SkipWait   bool
 	SkipStatus bool
-	Runner     frame2.Run
+	Runner     *frame2.Run
 }
 
+// Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
+func (s SkupperInstall) SkupperUpgradable() *base.ClusterContext {
+	return s.Namespace
+}
+
+// TODO: move this to a new SkupperInstallVAN or something; leave SkupperInstall as a
+// SkupperOp that calls either that or CliSkupperInit
 func (si SkupperInstall) Execute() error {
 
 	ctx := si.Ctx
@@ -44,22 +50,146 @@ func (si SkupperInstall) Execute() error {
 		return fmt.Errorf("SkupperInstall failed to create router: %w", err)
 	}
 
-	if !si.SkipWait {
-		waitCtx, cancel := context.WithTimeout(ctx, wait)
-		defer cancel()
+	phase := frame2.Phase{
+		Runner: si.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &ValidateSkupperAvailable{
+					Namespace:  si.Namespace,
+					MaxWait:    wait,
+					SkipWait:   si.SkipStatus,
+					SkipStatus: si.SkipStatus,
+					Runner:     si.Runner,
+					Ctx:        ctx,
+				},
+			},
+		},
+	}
 
-		phase := frame2.Phase{
-			Runner: &si.Runner,
-			MainSteps: []frame2.Step{{
+	return phase.Run()
+
+}
+
+// A Skupper installation that uses some default configurations.
+// It cannot be configured.  For a configurable version, use
+// SkupperInstall, instead.
+type SkupperInstallSimple struct {
+	Namespace *base.ClusterContext
+	Runner    *frame2.Run
+}
+
+func (sis SkupperInstallSimple) Execute() error {
+	phase := frame2.Phase{
+		Runner: sis.Runner,
+		MainSteps: []frame2.Step{
+			{
+				//Modify: SkupperInstall{
+				//	Runner:    sis.Runner,
+				//	Namespace: sis.Namespace,
+				//	RouterSpec: types.SiteConfigSpec{
+				//		SkupperName:       "",
+				//		RouterMode:        string(types.TransportModeInterior),
+				//		EnableController:  true,
+				//		EnableServiceSync: true,
+				//		EnableConsole:     true,
+				//		AuthMode:          types.ConsoleAuthModeInternal,
+				//		User:              "admin",
+				//		Password:          "admin",
+				//		Ingress:           sis.Namespace.VanClient.GetIngressDefault(),
+				//		Replicas:          1,
+				//		Router:            constants.DefaultRouterOptions(nil),
+				//	},
+				//},
+				Modify: CliSkupperInstall{
+					Runner:    sis.Runner,
+					Namespace: sis.Namespace,
+					//
+				},
+			},
+		},
+	}
+	return phase.Run()
+}
+
+type CliSkupperInstall struct {
+	Namespace  *base.ClusterContext
+	Ctx        context.Context
+	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
+	SkipWait   bool
+	SkipStatus bool
+	Runner     *frame2.Run
+}
+
+// Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
+func (s CliSkupperInstall) SkupperUpgradable() *base.ClusterContext {
+	return s.Namespace
+}
+
+func (s CliSkupperInstall) Execute() error {
+
+	args := []string{"init"}
+
+	phase := frame2.Phase{
+		Runner: s.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: &CliSkupper{
+					Args:           args,
+					ClusterContext: s.Namespace,
+				},
+				Validator: &ValidateSkupperAvailable{
+					Namespace:  s.Namespace,
+					MaxWait:    s.MaxWait,
+					SkipWait:   s.SkipStatus,
+					SkipStatus: s.SkipStatus,
+					Runner:     s.Runner,
+					Ctx:        s.Ctx,
+				},
+			},
+		},
+	}
+
+	return phase.Run()
+}
+
+type ValidateSkupperAvailable struct {
+	Namespace  *base.ClusterContext
+	Ctx        context.Context
+	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
+	SkipWait   bool
+	SkipStatus bool
+	Runner     *frame2.Run
+
+	frame2.Log
+}
+
+func (v ValidateSkupperAvailable) Validate() error {
+	var waitCtx context.Context
+	var cancel context.CancelFunc
+
+	wait := v.MaxWait
+	if wait == 0 {
+		wait = 2 * time.Minute
+	}
+
+	if !v.SkipWait {
+		waitCtx, cancel = context.WithTimeout(v.Runner.OrDefaultContext(v.Ctx), wait)
+		defer cancel()
+	}
+
+	phase := frame2.Phase{
+		Runner: v.Runner,
+		MainSteps: []frame2.Step{
+			{
 				Doc: "Check that the router and service controller containers are reporting as ready",
 				Validators: []frame2.Validator{
 					&validate.Container{
-						Namespace:   si.Namespace,
+						Namespace:   v.Namespace,
 						PodSelector: validate.RouterSelector,
 						StatusCheck: true,
 					},
 					&validate.Container{
-						Namespace:   si.Namespace,
+						Namespace:   v.Namespace,
 						PodSelector: validate.ServiceControllerSelector,
 						StatusCheck: true,
 					},
@@ -69,70 +199,27 @@ func (si SkupperInstall) Execute() error {
 					Ensure:     5, // The containers may briefly report ready before crashing
 					KeepTrying: true,
 				},
-			}},
-		}
-		err := phase.Run()
-		if err != nil {
-			return err
-		}
-	}
-
-	if !si.SkipStatus {
-		phase := frame2.Phase{
-			Doc:    "Record version and status of Skupper installation",
-			Runner: &si.Runner,
-			MainSteps: []frame2.Step{
-				{
-					Modify: &CliSkupper{
-						Args:      []string{"version"},
-						Namespace: si.Namespace.Namespace,
-						Cmd: Cmd{
-							ForceOutput: true,
-						},
-					},
-				}, {
-					Modify: &CliSkupper{
-						Args:      []string{"status"},
-						Namespace: si.Namespace.Namespace,
-						Cmd: Cmd{
-							ForceOutput: true,
-						},
+				SkipWhen: v.SkipWait,
+			}, {
+				Modify: &CliSkupper{
+					Args:      []string{"version"},
+					Namespace: v.Namespace.Namespace,
+					Cmd: Cmd{
+						ForceOutput: true,
 					},
 				},
+				SkipWhen: v.SkipStatus,
+			}, {
+				Modify: &CliSkupper{
+					Args:      []string{"status"},
+					Namespace: v.Namespace.Namespace,
+					Cmd: Cmd{
+						ForceOutput: true,
+					},
+				},
+				SkipWhen: v.SkipStatus,
 			},
-		}
-		err := phase.Run()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// A Skupper installation that uses some default configurations.
-// It cannot be configured.  For a configurable version, use
-// SkupperInstall, instead.
-type SkupperInstallSimple struct {
-	Namespace *base.ClusterContext
-}
-
-func (sis SkupperInstallSimple) Execute() error {
-	si := SkupperInstall{
-		Namespace: sis.Namespace,
-		RouterSpec: types.SiteConfigSpec{
-			SkupperName:       "",
-			RouterMode:        string(types.TransportModeInterior),
-			EnableController:  true,
-			EnableServiceSync: true,
-			EnableConsole:     true,
-			AuthMode:          types.ConsoleAuthModeInternal,
-			User:              "admin",
-			Password:          "admin",
-			Ingress:           sis.Namespace.VanClient.GetIngressDefault(),
-			Replicas:          1,
-			Router:            constants.DefaultRouterOptions(nil),
 		},
 	}
-	return si.Execute()
+	return phase.Run()
 }
