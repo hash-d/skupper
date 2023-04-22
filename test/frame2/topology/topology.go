@@ -102,6 +102,11 @@ type TopologyItem struct {
 	//SkipApplicationDeploy bool TODO
 
 	ClusterContext *base.ClusterContext
+
+	// TODO: need to add SkupperInstall configuration for the
+	//       topology items, so site-specific configurations
+	//       can be done (such as activating the console)
+	EnableConsole bool
 }
 
 // TopologyMap receives a list of TopologyItem that describe the topology.
@@ -290,8 +295,9 @@ func (t *TopologyBuild) Execute() error {
 					SkipWhen: topoItem.SkipNamespaceCreation,
 				}, {
 					Modify: execute.SkupperInstallSimple{
-						Namespace: context,
-						Runner:    t.Runner,
+						Namespace:     context,
+						Runner:        t.Runner,
+						EnableConsole: topoItem.EnableConsole,
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation || topoItem.SkipSkupperDeploy,
 				},

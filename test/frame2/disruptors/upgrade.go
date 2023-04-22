@@ -42,7 +42,7 @@ func (u *UpgradeAndFinalize) PreFinalizerHook(runner *frame2.Run) error {
 	return phase.Run()
 }
 
-func (u *UpgradeAndFinalize) Inspect(step frame2.Step, phase frame2.Phase) {
+func (u *UpgradeAndFinalize) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	if step, ok := step.Modify.(execute.SkupperUpgradable); ok {
 		u.targets = append(u.targets, step.SkupperUpgradable())
 	}

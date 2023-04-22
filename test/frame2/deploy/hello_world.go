@@ -54,6 +54,7 @@ func (hw HelloWorld) Execute() error {
 					Runner:         hw.Runner,
 					Target:         pub,
 					CreateServices: hw.CreateServices,
+					SkupperExpose:  hw.SkupperExpose,
 				},
 			}, {
 				Doc: "Install Hello World backend",
@@ -61,13 +62,12 @@ func (hw HelloWorld) Execute() error {
 					Runner:         hw.Runner,
 					Target:         prv,
 					CreateServices: hw.CreateServices,
+					SkupperExpose:  hw.SkupperExpose,
 				},
 			},
 		},
 	}
-	phase.Run()
-
-	return nil
+	return phase.Run()
 }
 
 type HelloWorldBackend struct {

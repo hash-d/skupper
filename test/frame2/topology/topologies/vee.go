@@ -15,6 +15,8 @@ import (
 //
 // Similarly, pub2 and prv2 will be the farthest apart on the
 // right branch.
+//
+// The Vertex node will have the console enabled.
 type V struct {
 	Name           string
 	TestRunnerBase *base.ClusterTestRunnerBase
@@ -60,6 +62,7 @@ func (v *V) Execute() error {
 			pub1,
 			pub2,
 		},
+		EnableConsole: true,
 	}
 
 	topoMap := []*topology.TopologyItem{

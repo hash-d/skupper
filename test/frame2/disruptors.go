@@ -9,9 +9,10 @@ type Disruptor interface {
 // executed.
 //
 // The disruptor will then be able to analise whether that
-// step is of interest for it or not
+// step is of interest for it or not, or even change the
+// step's configuration
 type Inspector interface {
-	Inspect(step Step, phase Phase)
+	Inspect(step *Step, phase *Phase)
 }
 
 // PreFinalizerHook will be executed at the end of the

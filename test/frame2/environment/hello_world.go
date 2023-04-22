@@ -88,6 +88,7 @@ func (hw HelloWorld) Execute() error {
 				Modify: deploy.HelloWorld{
 					Topology:      hw.Topology,
 					SkupperExpose: hw.SkupperExpose,
+					Runner:        hw.Runner,
 				},
 			},
 		},

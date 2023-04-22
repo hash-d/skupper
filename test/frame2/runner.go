@@ -31,7 +31,12 @@ func (r *Run) GetContext() context.Context {
 }
 
 // Return ctx if not nil.  If nil, return the runner's default context
+//
+// If the runner is not availble (call on nil reference), return context.Background
 func (r *Run) OrDefaultContext(ctx context.Context) context.Context {
+	if r == nil {
+		return context.Background()
+	}
 	if ctx == nil {
 		return r.GetContext()
 	}
@@ -199,7 +204,7 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase)
 	disruptor := p.savedRunner.getRoot().disruptor
 	if disruptor != nil {
 		if disruptor, ok := disruptor.(Inspector); ok {
-			disruptor.Inspect(step, *p)
+			disruptor.Inspect(&step, p)
 		}
 	}
 	if step.Modify != nil {

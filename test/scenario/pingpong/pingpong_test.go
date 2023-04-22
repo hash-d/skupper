@@ -26,6 +26,7 @@ import (
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/composite"
 	"github.com/skupperproject/skupper/test/frame2/deploy"
+	"github.com/skupperproject/skupper/test/frame2/disruptors"
 	"github.com/skupperproject/skupper/test/frame2/environment"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
@@ -43,6 +44,7 @@ func TestPingPong(t *testing.T) {
 		T: t,
 	}
 	defer r.Report()
+	r.AllowDisruptors([]frame2.Disruptor{&disruptors.NoHttp{}})
 
 	var topologyV topology.Basic
 	topologyV = &topologies.V{
@@ -129,6 +131,7 @@ func TestPingPong(t *testing.T) {
 							ForceOutput: true,
 						},
 					},
+					SkipWhen: true,
 				}, {
 					Name: "Move to right",
 					Modify: &MoveToRight{
@@ -148,6 +151,7 @@ func TestPingPong(t *testing.T) {
 							ForceOutput: true,
 						},
 					},
+					SkipWhen: true,
 				}, {
 					Name: "Move to left",
 					Modify: &MoveToLeft{
@@ -294,9 +298,7 @@ func (m *MoveToRight) Execute() error {
 		},
 	}
 
-	p.Run()
-
-	return nil
+	return p.Run()
 }
 
 type MoveToLeft struct {
@@ -396,7 +398,5 @@ func (m *MoveToLeft) Execute() error {
 		},
 	}
 
-	p.Run()
-
-	return nil
+	return p.Run()
 }
