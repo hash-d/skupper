@@ -81,7 +81,7 @@ func (p PatientPortal) Execute() error {
 				Modify: &PatientFrontend{
 					Runner:         p.Runner,
 					Target:         front_ns,
-					CreateServices: true,
+					CreateServices: p.CreateServices,
 					SkupperExpose:  p.SkupperExpose,
 				},
 			},
@@ -313,7 +313,7 @@ type PatientValidatePayment struct {
 
 func (p PatientValidatePayment) Validate() error {
 	if p.Namespace == nil {
-		return fmt.Errorf("HelloWorldValidateBack configuration error: empty Namespace")
+		return fmt.Errorf("PatientValidatePayment configuration error: empty Namespace")
 	}
 	svc := p.ServiceName
 	if svc == "" {
@@ -341,5 +341,75 @@ func (p PatientValidatePayment) Validate() error {
 		},
 	}
 	phase.SetLogger(p.Logger)
+	return phase.Run()
+}
+
+type PatientFrontendHealth struct {
+	Runner      *frame2.Run
+	Namespace   *base.ClusterContext
+	ServiceName string // default is frontend
+	ServicePort int    // default is 8080
+	ServicePath string // default is api/health
+
+	frame2.Log
+}
+
+func (p PatientFrontendHealth) Validate() error {
+	if p.Namespace == nil {
+		return fmt.Errorf("PatientCurlFrontend configuration error: empty Namespace")
+	}
+	svc := p.ServiceName
+	if svc == "" {
+		svc = "frontend"
+	}
+	port := p.ServicePort
+	if port == 0 {
+		port = 8080
+	}
+	path := p.ServicePath
+	if path == "" {
+		path = "api/health"
+	}
+	phase := frame2.Phase{
+		Runner: p.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &validate.Curl{
+					Namespace:   p.Namespace,
+					Url:         fmt.Sprintf("http://%s:%d/%s", svc, port, path),
+					Fail400Plus: true,
+					Log:         p.Log,
+				},
+			},
+		},
+	}
+	phase.SetLogger(p.Logger)
+	return phase.Run()
+}
+
+// Given a namespace with a PatientFrontend deployment, it will ping the
+// DB from that deployment using pg_isready
+// TODO change this to use a test helper pod, instead of the frontend
+type PatientDbPing struct {
+	Runner    *frame2.Run
+	Namespace *base.ClusterContext
+
+	frame2.Log
+}
+
+func (p *PatientDbPing) Validate() error {
+	phase := frame2.Phase{
+		Runner: p.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &execute.PostgresPing{
+					Namespace: p.Namespace,
+					Labels:    map[string]string{"app": "frontend"},
+					DbName:    "database",
+					DbHost:    "database",
+				},
+			},
+		},
+	}
 	return phase.Run()
 }

@@ -62,6 +62,14 @@ func TestPatientPortalTemplate(t *testing.T) {
 						Runner:    r,
 						Namespace: front_ns,
 					},
+					&deploy.PatientFrontendHealth{
+						Runner:    r,
+						Namespace: front_ns,
+					},
+					&deploy.PatientDbPing{
+						Runner:    r,
+						Namespace: front_ns,
+					},
 				},
 				ValidatorFinal: true,
 			},
