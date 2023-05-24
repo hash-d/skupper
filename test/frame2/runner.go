@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/skupperproject/skupper/test/utils/base"
 )
 
 type Run struct {
@@ -84,11 +86,29 @@ func (r *Run) Finalize() {
 	if len(r.finalValidators) > 0 {
 		r.savedT.Run("final-validator-re-run", func(t *testing.T) {
 			log.Printf("[R] Running final validators")
-			for _, v := range r.finalValidators {
-				err := v.Validate()
-				if err != nil {
-					r.savedT.Errorf("final validator failed: %v", err)
+			fn := func() error {
+				failed := false
+				var err, last_err error
+				for _, v := range r.finalValidators {
+					err = v.Validate()
+					if err != nil {
+						failed = true
+						last_err = err
+					}
 				}
+				if failed {
+					return fmt.Errorf("at least one final validator failed.  Last err: %v", last_err)
+				}
+				return nil
+			}
+			_, err := Retry{
+				Fn: fn,
+				Options: RetryOptions{
+					Allow: base.GetEnvInt(ENV_FINAL_RETRY, 1),
+				},
+			}.Run()
+			if err != nil {
+				t.Errorf("final validation failed: %v", err)
 			}
 		})
 	}

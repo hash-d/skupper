@@ -1,6 +1,7 @@
 package base
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -81,6 +82,21 @@ const (
 	// system behaves when tests are run before the changes are finished.
 	ENV_POLICY_NO_GET_WAIT = "SKUPPER_TEST_POLICY_NO_GET_WAIT"
 )
+
+// Returns the integer value of the named variable; returns the default value if not
+// defined or empty.  If there is a value and not an int, panic
+func GetEnvInt(name string, default_ int) int {
+	val, found := os.LookupEnv(name)
+	if !found || val == "" {
+		return default_
+	}
+	ret, err := strconv.Atoi(val)
+	if err != nil {
+		panic(fmt.Sprintf("variable %q has non-integer value %q", name, val))
+	}
+	return ret
+
+}
 
 func ShouldSkipNamespaceSetup() bool {
 	_, found := os.LookupEnv(ENV_SKIP_NAMESPACE_SETUP)
