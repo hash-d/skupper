@@ -11,33 +11,80 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
-// Sort the targets according to some strategy, configured on
-// SKUPPER_TEST_UPGRADE_STRATEGY.  If none set, return the
-// target list unchanged
-func sortTargets(targets []*base.ClusterContext) []*base.ClusterContext {
+type TestUpgradeStrategy string
 
-	var ret []*base.ClusterContext
+// Upgrade strategies accepted by frame2.ENV_UPGRADE_STRATEGY
+const (
+	UPGRADE_STRATEGY_CREATION TestUpgradeStrategy = "CREATION"
+
+	// This one is special; it is set after a colon and inverts the
+	// result. For example: ":INVERSE" or "CREATION:INVERSE"
+	UPGRADE_STRATEGY_INVERSE TestUpgradeStrategy = "INVERSE"
+
+	// Do all public first, then all private.  Within the groups,
+	// they'll be left in their original order.
+	UPGRADE_STRATEGY_PUB_FIRST TestUpgradeStrategy = "PUB_FIRST"
+
+	// Do all public first, then all private.  Within the groups,
+	// they'll be left in their original order.
+	UPGRADE_STRATEGY_PRV_FIRST TestUpgradeStrategy = "PRV_FIRST"
+)
+
+// Returns the Upgrade strategy configured in the environment
+func getUpgradeStrategy() (TestUpgradeStrategy, bool) {
 	var invert bool
-	var strategy frame2.TestUpgradeStrategy
+	var strategy TestUpgradeStrategy
 
 	envValue := os.Getenv(frame2.ENV_UPGRADE_STRATEGY)
 
 	s := strings.SplitN(envValue, ":", 2)
-	strategy = frame2.TestUpgradeStrategy(s[0])
+	strategy = TestUpgradeStrategy(s[0])
 	if strategy == "" {
-		strategy = frame2.UPGRADE_STRATEGY_CREATION
+		strategy = UPGRADE_STRATEGY_CREATION
 	}
 	if len(s) > 1 {
-		if s[1] == string(frame2.UPGRADE_STRATEGY_INVERSE) {
+		if s[1] == string(UPGRADE_STRATEGY_INVERSE) {
 			invert = true
 		} else {
 			panic(fmt.Sprintf("invalid option to SKUPPER_TEST_UPGRADE_STRATEGY: %v", s[1]))
 		}
 	}
 
+	return strategy, invert
+
+}
+
+// Return the public and private contexts in different slices, but keeping
+// their relative orders.
+func getPubPrvUpgradeTargets(targets []*base.ClusterContext) (pubs, privs []*base.ClusterContext) {
+	for _, c := range targets {
+		if c.Private {
+			privs = append(privs, c)
+		} else {
+			pubs = append(pubs, c)
+		}
+	}
+	return pubs, privs
+}
+
+// Sort the targets according to some strategy, configured on
+// SKUPPER_TEST_UPGRADE_STRATEGY.  If none set, return the target list
+// unchanged
+func sortUpgradeTargets(targets []*base.ClusterContext) []*base.ClusterContext {
+
+	var ret []*base.ClusterContext
+
+	strategy, invert := getUpgradeStrategy()
+
 	switch strategy {
-	case frame2.UPGRADE_STRATEGY_CREATION:
+	case UPGRADE_STRATEGY_CREATION:
 		ret = targets[:]
+	case UPGRADE_STRATEGY_PUB_FIRST:
+		pubs, privs := getPubPrvUpgradeTargets(targets)
+		ret = append(pubs, privs...)
+	case UPGRADE_STRATEGY_PRV_FIRST:
+		pubs, privs := getPubPrvUpgradeTargets(targets)
+		ret = append(privs, pubs...)
 	default:
 		panic(fmt.Sprintf("invalid upgrade strategy: %v", strategy))
 	}
@@ -72,7 +119,7 @@ func (u *UpgradeAndFinalize) PreFinalizerHook(runner *frame2.Run) error {
 	var steps []frame2.Step
 	u.useNew = true
 
-	targets := sortTargets(u.targets)
+	targets := sortUpgradeTargets(u.targets)
 
 	for _, t := range targets {
 		steps = append(steps, frame2.Step{

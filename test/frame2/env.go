@@ -2,8 +2,6 @@ package frame2
 
 // Frame2-specific environment variables
 
-type TestUpgradeStrategy string
-
 const (
 	// This sets the 'Allow' parameter of the retry block for the final
 	// validations, and needs to be an integer value.  Any validations
@@ -38,13 +36,4 @@ const (
 	//
 	// Valid values are of the string type TestUpgradeStrategy
 	ENV_UPGRADE_STRATEGY = "SKUPPER_TEST_UPGRADE_STRATEGY"
-)
-
-// Upgrade strategies accepted by ENV_UPGRADE_STRATEGY
-const (
-	UPGRADE_STRATEGY_CREATION TestUpgradeStrategy = "CREATION"
-
-	// This one is special; it is set after a colon and inverts the
-	// result. For example: ":INVERSE" or "CREATION:INVERSE"
-	UPGRADE_STRATEGY_INVERSE TestUpgradeStrategy = "INVERSE"
 )
