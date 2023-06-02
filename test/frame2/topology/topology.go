@@ -272,7 +272,7 @@ func (t *TopologyBuild) Execute() error {
 	// Execute the TopologyMap; create the ClusterContext items
 	buildTopologyMap := frame2.Phase{
 		Runner: t.Runner,
-		Setup: []frame2.Step{
+		MainSteps: []frame2.Step{
 			{
 				Modify: tm,
 			},
@@ -308,7 +308,7 @@ func (t *TopologyBuild) Execute() error {
 
 	connectSteps := frame2.Phase{
 		Runner: t.Runner,
-		MainSteps: []frame2.Step{
+		Setup: []frame2.Step{
 			{
 				Modify: TopologyConnect{
 					TopologyMap: *tm,

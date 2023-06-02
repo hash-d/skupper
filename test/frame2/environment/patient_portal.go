@@ -75,6 +75,7 @@ func (p PatientPortal) Execute() error {
 				Modify: &topo,
 			}, {
 				Modify: deploy.PatientPortal{
+					Runner:        p.Runner,
 					Topology:      p.Topology,
 					SkupperExpose: p.SkupperExpose,
 				},

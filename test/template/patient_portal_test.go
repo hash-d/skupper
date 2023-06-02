@@ -19,11 +19,13 @@ func TestPatientPortalTemplate(t *testing.T) {
 	r := &frame2.Run{
 		T: t,
 	}
+	defer r.Report()
 	defer r.Finalize()
 
 	r.AllowDisruptors(
 		[]frame2.Disruptor{
 			&disruptors.UpgradeAndFinalize{},
+			&disruptors.MixedVersionVan{},
 		},
 	)
 
@@ -43,13 +45,33 @@ func TestPatientPortalTemplate(t *testing.T) {
 			},
 		},
 	}
-
 	assert.Assert(t, setup.Run())
 
 	front_ns, err := env.TopoReturn.Get(topology.Public, 1)
 	if err != nil {
 		t.Fatalf(fmt.Sprintf("failed to get pub-1: %v", err))
 	}
+
+	// In case you're running with disruptors, the monitors not only inform when connectivity
+	// was disrupted, but also help with applications re-establishing their connections (on
+	// a pool, for example) after a disruption, and before the actual test.
+	monitorPhase := frame2.Phase{
+		Runner: r,
+		Setup: []frame2.Step{
+			{
+				Doc: "Install Patient Portal monitors",
+				Modify: &frame2.DefaultMonitor{
+					Validators: map[string]frame2.Validator{
+						"frontend-health": &deploy.PatientFrontendHealth{
+							Runner:    r,
+							Namespace: front_ns,
+						},
+					},
+				},
+			},
+		},
+	}
+	assert.Assert(t, monitorPhase.Run())
 
 	main := frame2.Phase{
 		Runner: r,

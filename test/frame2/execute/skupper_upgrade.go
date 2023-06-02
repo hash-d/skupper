@@ -17,6 +17,21 @@ type SkupperUpgrade struct {
 
 	Wait time.Duration
 	Ctx  context.Context
+
+	// TODO
+	// If true, skips checking the images against the manifest.  If
+	// false and no manifest available, panic
+	SkipManifest bool
+
+	// TODO
+	// Location of the manifest file to be used on the manifest/image
+	// tag check.  If empty, check: (?)
+	// - Current dir
+	// - Test root dir
+	// - Same directory as the skupper binary
+	ManifestFile string
+
+	// TODO: SkupperBinary (for multi-step upgrades)
 }
 
 func (s SkupperUpgrade) Execute() error {

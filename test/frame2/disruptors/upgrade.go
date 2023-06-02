@@ -2,6 +2,7 @@ package disruptors
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -99,6 +100,28 @@ func sortUpgradeTargets(targets []*base.ClusterContext) []*base.ClusterContext {
 	return ret
 }
 
+func upgradeSites(targets []*base.ClusterContext, runner *frame2.Run) error {
+	var steps []frame2.Step
+
+	log.Printf("Upgrading sites %+v", targets)
+
+	for _, t := range targets {
+		steps = append(steps, frame2.Step{
+			Modify: execute.SkupperUpgrade{
+				Runner:    runner,
+				Namespace: t,
+				Wait:      time.Minute * 10,
+			},
+		})
+	}
+	phase := frame2.Phase{
+		Runner:    runner,
+		MainSteps: steps,
+		Doc:       "Upgrade sites per disruptor",
+	}
+	return phase.Run()
+}
+
 // At the end of the test, before the tear down, upgrade all
 // sites and then re-run all tests marked as final
 //
@@ -148,6 +171,75 @@ func (u *UpgradeAndFinalize) Inspect(step *frame2.Step, phase *frame2.Phase) {
 				panic("Disruptor UPGRADE_AND_FINALIZE requested, but no SKUPPER_TEST_OLD_BIN config")
 			}
 			step.SetSkupperCliPath(path)
+		}
+	}
+}
+
+// Right after setup is complete, update part of the VAN, and
+// then run the tests in this mixed-version network
+//
+// At the end of the test, before the tear down, upgrade the
+// remaining sites and then re-run all tests marked as final
+//
+// The upgrade strategy can be defined on the environment
+// variable SKUPPER_TEST_UPGRADE_STRATEGY.
+//
+// When using a strategy such as PUB_FIRST, the public sites
+// will be done on the postSetup hook, and the others in the
+// PreFinalizer.  On other strategies, the list will simply
+// be split in two halves
+type MixedVersionVan struct {
+	targets   []*base.ClusterContext
+	remaining []*base.ClusterContext
+	useNew    bool
+}
+
+func (m MixedVersionVan) DisruptorEnvValue() string {
+	return "MIXED_VERSION_VAN"
+}
+
+func (m *MixedVersionVan) PostSetupHook(runner *frame2.Run) error {
+	m.useNew = true
+	targets := sortUpgradeTargets(m.targets)
+
+	var cycleTargets, nextCycle []*base.ClusterContext
+
+	strategy, _ := getUpgradeStrategy()
+
+	switch strategy {
+	default:
+		cycleTargets = targets[:len(targets)/2]
+		nextCycle = targets[len(targets)/2:]
+	}
+
+	m.remaining = nextCycle
+
+	return upgradeSites(cycleTargets, runner)
+}
+
+// Updates the remaining sites before the finalizer runs
+func (m *MixedVersionVan) PreFinalizerHook(runner *frame2.Run) error {
+	m.useNew = true
+
+	targets := sortUpgradeTargets(m.remaining)
+	m.remaining = []*base.ClusterContext{}
+
+	return upgradeSites(targets, runner)
+}
+
+// Change this to a mix-in, share with UpgradeAndFinalize?
+func (m *MixedVersionVan) Inspect(step *frame2.Step, phase *frame2.Phase) {
+	if UpgradableStep, ok := step.Modify.(execute.SkupperUpgradable); ok {
+		m.targets = append(m.targets, UpgradableStep.SkupperUpgradable())
+	}
+	if PathSetStep, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
+		if !m.useNew {
+			path := os.Getenv("SKUPPER_TEST_OLD_BIN")
+			log.Printf("MixedVersionVan disruptor updating %+v to use %q", PathSetStep, path)
+			if path == "" {
+				panic("Disruptor UPGRADE_AND_FINALIZE requested, but no SKUPPER_TEST_OLD_BIN config")
+			}
+			PathSetStep.SetSkupperCliPath(path)
 		}
 	}
 }

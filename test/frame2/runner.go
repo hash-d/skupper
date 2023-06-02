@@ -456,6 +456,13 @@ func (p *Phase) run(id string) error {
 				monitorStep.Monitor(p.savedRunner)
 			}
 		}
+		if d, ok := runner.getRoot().disruptor.(PostSetupHook); ok {
+			log.Printf("[R] Running post-setup hook")
+			err := d.PostSetupHook(runner)
+			if err != nil {
+				runner.T.Errorf("post-setup hook failed: %v", err)
+			}
+		}
 	}
 
 	var savedErr error

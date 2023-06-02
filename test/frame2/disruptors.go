@@ -15,6 +15,12 @@ type Inspector interface {
 	Inspect(step *Step, phase *Phase)
 }
 
+// PostSetupHook will be executed right after the setup
+// phase completes, before the main steps.
+type PostSetupHook interface {
+	PostSetupHook(runner *Run) error
+}
+
 // PreFinalizerHook will be executed at the end of the
 // test, before all other finalizer tasks, such as the
 // re-run of validators marked as final
