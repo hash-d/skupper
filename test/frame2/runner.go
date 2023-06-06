@@ -6,35 +6,149 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
+// Each step on a phase runs with its own Runner.  These constants identify
+// what type of work is being done by the Runner.  The step IDs are derived
+// from their Runner type
+type RunnerType int
+
+const (
+	RootRunner RunnerType = iota
+	PhaseRunner
+	ValidatorRunner
+	ModifyRunner
+	SetupRunner
+	HookRunner
+	SubTestRunner
+	StepRunner
+	TearDownRunner
+	MonitorRunner
+)
+
+// The Run (TODO rename?) keeps context accross the execution of the test.  Each
+// phase and each step has its runner, in a tree structure
 type Run struct {
-	T               *testing.T
-	Doc             string // TODO this is currently unused (ie, it's not printed)
-	savedT          *testing.T
-	currentPhase    int
-	monitors        []*Monitor
-	finalValidators []Validator
-	ctx             context.Context
-	cancelCtx       context.CancelFunc
-	root            *Run
-	disruptor       Disruptor
+	T                 *testing.T
+	Doc               string     // TODO this is currently unused (ie, it's not printed)
+	savedT            *testing.T // TODO: review.  Only private + getter/setter?
+	monitors          []*Monitor
+	finalValidators   []Validator
+	ctx               context.Context
+	cancelCtx         context.CancelFunc
+	root              *Run // TODO Perhaps replace this by a recursive call, now we have parent
+	disruptor         Disruptor
+	parent            *Run
+	children          []*Run
+	kind              RunnerType
+	sequence          int // RunId is derived from kind+sequence
+	nextChildSequence int
+	postSetup         bool
+	postMainSetupDone bool
 }
 
-func (r *Run) GetContext() context.Context {
-	if r.ctx == nil {
-		r.ctx, r.cancelCtx = context.WithCancel(context.Background())
-		r.savedT.Cleanup(r.cancelCtx)
+// Return the full ID of the Runner, which includes the ID of its parent
+func (r *Run) GetId() string {
+	if r == nil {
+		return "-"
 	}
+	var kindLetter string
+	switch r.kind {
+	case RootRunner:
+		kindLetter = "R"
+	case PhaseRunner:
+		kindLetter = "p"
+	case ValidatorRunner:
+		kindLetter = "v"
+	case ModifyRunner:
+		kindLetter = "m"
+	case SetupRunner:
+		kindLetter = "set"
+	case HookRunner:
+		kindLetter = "H"
+	case StepRunner:
+		kindLetter = "s"
+	case SubTestRunner:
+		kindLetter = "SubT"
+	case TearDownRunner:
+		kindLetter = "TD"
+	case MonitorRunner:
+		kindLetter = "M"
+	default:
+		panic("unhandled kind of Runner")
+	}
+	localId := fmt.Sprintf("%v%v", kindLetter, r.sequence)
+	if r.parent == nil || r.kind == SubTestRunner {
+		return fmt.Sprintf("%v", localId)
+	}
+	return fmt.Sprintf("%v.%v", r.parent.GetId(), localId)
+}
+
+// TODO: make just Child(), which reuses the runner's own T
+func (r *Run) ChildWithT(t *testing.T, kind RunnerType) *Run {
+	// TODO Should we allow this, or panic?
+	if r == nil {
+		return nil
+	}
+	root := r.root
+	if root == nil {
+		root = r
+	}
+	child := Run{
+		parent:    r,
+		T:         t,
+		savedT:    t,
+		ctx:       r.ctx,
+		cancelCtx: r.cancelCtx,
+		sequence:  r.nextChildSequence,
+		root:      root,
+		kind:      kind,
+	}
+	r.nextChildSequence += 1
+	r.children = append(r.children, &child)
+
+	return &child
+}
+
+func (r *Run) ReportChildren(indent int) {
+	for _, c := range r.children {
+		log.Printf("%v- %v %+v", strings.Repeat(" ", indent), c.GetId(), *c)
+		c.ReportChildren(indent + 1)
+	}
+}
+
+// GetContext will always return a context.  If not defined on the
+// current level, check the parent.  If not on the parent, create a
+// new Background context.
+//
+// When contexts are created on this method, they get scheduled for
+// cancellation on T.Cleanup()
+//
+// TODO contexts are not expected to change?
+func (r *Run) GetContext() context.Context {
+	if r == nil {
+		return context.Background()
+	}
+	if r.ctx != nil {
+		return r.ctx
+	}
+	if ctx := r.parent.GetContext(); ctx != nil {
+		return ctx
+	}
+	r.ctx, r.cancelCtx = context.WithCancel(context.Background())
+	r.savedT.Cleanup(r.cancelCtx)
 	return r.ctx
 }
 
 // Return ctx if not nil.  If nil, return the runner's default context
 //
-// If the runner is not availble (call on nil reference), return context.Background
+// # If the runner is not available (call on nil reference), return context.Background
+//
+// TODO review
 func (r *Run) OrDefaultContext(ctx context.Context) context.Context {
 	if r == nil {
 		return context.Background()
@@ -43,7 +157,6 @@ func (r *Run) OrDefaultContext(ctx context.Context) context.Context {
 		return r.GetContext()
 	}
 	return ctx
-
 }
 
 func (r *Run) CancelContext() {
@@ -76,7 +189,10 @@ func (r *Run) getRoot() *Run {
 func (r *Run) Finalize() {
 	if d, ok := r.getRoot().disruptor.(PreFinalizerHook); ok {
 		log.Printf("[R] Running pre-finalizer hook")
-		err := d.PreFinalizerHook(r)
+		var err error
+		r.T.Run("pre-finalizer-hook", func(t *testing.T) {
+			err = d.PreFinalizerHook(r.ChildWithT(t, HookRunner))
+		})
 		if err != nil {
 			r.T.Errorf("pre-finalizer hook failed: %v", err)
 		}
@@ -84,8 +200,11 @@ func (r *Run) Finalize() {
 	log.Printf("[R] Running finalizers")
 
 	if len(r.finalValidators) > 0 {
-		r.savedT.Run("final-validator-re-run", func(t *testing.T) {
+		r.T.Run("final-validator-re-run", func(t *testing.T) {
 			log.Printf("[R] Running final validators")
+			// TODO: change this by a phase run with Retry and a slice of
+			// validators, taking care of the runner.  Perhaps make a copy of
+			// the validators, instead of using pointers?
 			fn := func() error {
 				failed := false
 				var err, last_err error
@@ -112,11 +231,12 @@ func (r *Run) Finalize() {
 			}
 		})
 	}
+	r.ReportChildren(0)
 }
 
 // This will cause all active monitors to report their status on the logs.
 //
-// It should generally be run as defer r.Run(), right after the Run creation
+// It should generally be run as defer r.Report(), right after the Run creation
 func (r *Run) Report() {
 
 	failed := false
@@ -164,10 +284,16 @@ func (r *Run) AllowDisruptors(list []Disruptor) {
 			}
 		}
 	}
-	r.savedT.Skipf("This test does not support the disruptor %v", kind)
+	r.T.Skipf("This test does not support the disruptor %v", kind)
 
 }
 
+// While the Run keeps context accross the test, the phases do the actual work,
+// and they allow the test to be split in multiple pieces.
+//
+// This allows to:
+// - Put a phase on a loop
+// - Access variables populated in previous phases
 type Phase struct {
 	Name      string
 	Doc       string
@@ -183,12 +309,29 @@ type Phase struct {
 	connected   bool
 
 	Log
+	DefaultRunDealer
+}
+
+// TODO Review/remove
+func (p *Phase) GetRunner() *Run {
+	if r := p.DefaultRunDealer.GetRunner(); r != nil {
+		return r
+	}
+	if r := p.Runner; r != nil {
+		return r
+	}
+
+	return nil
 }
 
 // TODO: move this into Phase?
-func processStep(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) error {
+// Checks whether a step should be skipped, and whether it should be treated
+// as an individual subtest; the heavy lifting is done on processStep_
+func processStep(t *testing.T, step Step, Log FrameLogger, p *Phase, kind RunnerType) error {
 	// TODO: replace [R] with own logger with Prefix?
 	var err error
+
+	id := p.DefaultRunDealer.GetRunner().GetId()
 
 	if step.SkipWhen {
 		Log.Printf("[R] %v step skipped (%s)", id, step.Doc)
@@ -198,10 +341,11 @@ func processStep(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) 
 	if step.Name != "" {
 		// For a named test, run or fail, we work the same.  It's up to t to
 		// mark it as failed
+		Log.Printf("Entering subtest with id %v", id)
 		_ = t.Run(step.Name, func(t *testing.T) {
 			//log.Printf("[R] %v current test: %q", id, t.Name())
 			Log.Printf("[R] %v Doc: %v", id, step.Doc)
-			processErr := processStep_(t, step, id, Log, p)
+			processErr := processStep_(t, step, SubTestRunner, Log, p)
 			if processErr != nil {
 				// This makes it easier to find the failures in log files
 				Log.Printf("[R] test %v - %q failed", id, t.Name())
@@ -214,36 +358,48 @@ func processStep(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) 
 	} else {
 		// TODO.  Add the step number (like 2.1.3)
 		//Log.Printf("[R] %v current test: %q", id, t.Name())
-		Log.Printf("[R] %v doc %q", id, step.Doc)
-		err = processStep_(t, step, id, Log, p)
+		err = processStep_(t, step, kind, Log, p)
 	}
 	return err
 
 }
-func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase) error {
-	disruptor := p.savedRunner.getRoot().disruptor
+
+// Does the heavy lifting of executing a single step from a phase; execute each of its
+// parts: setup, modify, substeps, validations, etc
+func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *Phase) error {
+	stepRunner := p.DefaultRunDealer.GetRunner().ChildWithT(t, kind)
+	id := stepRunner.GetId()
+	Log.Printf("[R] %v doc %q", id, step.Doc)
+
+	disruptor := p.GetRunner().getRoot().disruptor
 	if disruptor != nil {
 		if disruptor, ok := disruptor.(Inspector); ok {
 			disruptor.Inspect(&step, p)
 		}
 	}
+
 	if step.Modify != nil {
+		var modifyRunner *Run
+		if mod, ok := step.Modify.(RunDealer); ok {
+			mod.SetRunner(stepRunner, ModifyRunner)
+			modifyRunner = mod.GetRunner()
+		} else {
+			modifyRunner = stepRunner.ChildWithT(t, ModifyRunner)
+		}
+		id := modifyRunner.GetId()
 		Log.Printf("[R] %v Modifier %T", id, step.Modify)
 		var err error
 		if phase, ok := step.Modify.(Phase); ok {
-			if phase.Runner == nil {
-				phase.Runner = &Run{T: t, root: p.Runner.getRoot()}
-			}
-			if phase.Name == "" {
-				err = phase.runP(fmt.Sprintf("%v.inner", id))
-			} else {
-				err = phase.runP(id)
-			}
+			err = phase.runP(modifyRunner)
 		} else {
+			// This is a simple executor; we just execute it
 			err = step.Modify.Execute()
 		}
 		if err != nil {
+			Log.Printf("[R] %v not-ok", id)
 			return fmt.Errorf("modify step failed: %w", err)
+		} else {
+			Log.Printf("[R] %v finished-ok", id)
 		}
 	}
 
@@ -251,10 +407,10 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase)
 	if step.Substep != nil {
 		subStepList = append([]*Step{step.Substep}, step.Substeps...)
 	}
-	for i, subStep := range subStepList {
+	for _, subStep := range subStepList {
 		_, err := Retry{
 			Fn: func() error {
-				return processStep(t, *subStep, fmt.Sprintf("%v.sub%d", id, i), Log, p)
+				return processStep(t, *subStep, Log, p, SubTestRunner)
 			},
 			Options: step.SubstepRetry,
 		}.Run()
@@ -270,6 +426,8 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase)
 	}
 
 	if len(validatorList) > 0 {
+		validatorRunner := stepRunner.ChildWithT(t, ValidatorRunner)
+		id := validatorRunner.GetId()
 		if step.ValidatorFinal {
 			p.savedRunner.addFinalValidators(validatorList)
 		}
@@ -279,6 +437,7 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase)
 			var lastErr error
 			for i, v := range validatorList {
 				Log.Printf("[R] %v.v%d Validator %T", id, i, v)
+				// TODO: create and set individual runners for each validator?
 				err := v.Validate()
 				if err == nil {
 					someSuccess = true
@@ -318,11 +477,12 @@ func processStep_(t *testing.T, step Step, id string, Log FrameLogger, p *Phase)
 //
 // If the Phase already had a Runner set, it will fail.
 func (p *Phase) RunT(t *testing.T) error {
-	if p.Runner == nil {
+	if p.GetRunner() == nil {
 		p.Runner = &Run{
 			T: t,
 		}
 		p.savedRunner = p.Runner
+		p.DefaultRunDealer.Runner = p.Runner
 	} else {
 		return fmt.Errorf("Phase.RunT configuration error: cannot reset the Runner")
 	}
@@ -334,80 +494,80 @@ func (p Phase) Execute() error {
 }
 
 func (p *Phase) Run() error {
-	return p.runP("")
+	runner := p.GetRunner()
+	if runner == nil {
+		runner = p.Runner
+	}
+	return p.runP(runner)
 }
 
-func (p *Phase) runP(id string) error {
+// Run phase; it creates a child runner for the given one
+func (p *Phase) runP(runner *Run) error {
 	var err error
 
-	var idPrefix string
-	if id != "" {
-		idPrefix = fmt.Sprintf("%v ", id)
-	}
+	var id string
 
 	// If a named phase, and within a *testing.T, create a subtest
-	if p.Name != "" && p.Runner.T != nil {
-		//savedRunner := p.Runner
-		ok := p.Runner.T.Run(p.Name, func(t *testing.T) {
-			//log.Printf("[R] %vcurrent test: %q", idPrefix, t.Name())
-			p.Log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
-			p.Runner = &Run{T: t, root: p.Runner.getRoot()}
-			err = p.run(id)
-			p.Log.Printf("[R] %vSubtest %q completed", idPrefix, t.Name())
+	if p.Name != "" && p.GetRunner().T != nil {
+		ok := p.GetRunner().T.Run(p.Name, func(t *testing.T) {
+			p.DefaultRunDealer.Runner = runner.ChildWithT(t, PhaseRunner)
+			id = p.GetRunner().GetId()
+			log.Printf("[R] %v current test: %q", id, t.Name())
+			p.Log.Printf("[R] %v Phase doc: %v", id, p.Doc)
+			err = p.run()
+			p.Log.Printf("[R] %v Subtest %q completed", id, t.Name())
 		})
 
 		//p.Runner = savedRunner
-		if !ok && err != nil {
+		if !ok && err == nil {
 			err = errors.New("test returned not-ok, but no errors")
 		}
 	} else {
 		// otherwise, just run it
-		//log.Printf("[R] %vcurrent test: %q", idPrefix, p.Runner.T.Name())
-		p.Log.Printf("[R] %vPhase doc: %v", idPrefix, p.Doc)
-		err = p.run(id)
+		//log.Printf("[R] %vcurrent test: %q", id, p.Runner.T.Name())
+		p.SetRunner(runner, PhaseRunner)
+		id = p.GetRunner().GetId()
+		p.Log.Printf("[R] %v Phase doc: %v", id, p.Doc)
+		err = p.run()
 	}
 
 	if err != nil {
-		if p.Runner.T == nil {
-			p.Log.Printf("[R] %vPhase error: %v", idPrefix, err)
+		if p.GetRunner().T == nil {
+			p.Log.Printf("[R] %v Phase error: %v", id, err)
 		}
 	}
 	return err
 }
 
 func (p *Phase) addMonitor(monitor *Monitor) {
-	p.savedRunner.addMonitor(monitor)
+	p.GetRunner().getRoot().addMonitor(monitor)
 
 }
 
-func (p *Phase) run(id string) error {
+func (p *Phase) run() error {
 
-	var idPrefix string
-	if id != "" && p.connected {
-		idPrefix = fmt.Sprintf("%v.", id)
-	}
+	idPrefix := p.GetRunner().GetId()
 
 	// If the phase has no runner, let's create one, without a *testing.T.  This
 	// allows the runner to be used disconneced from the testing module.  This
 	// way, Actions can be composed using a Phase
-	runner := p.Runner
+	runner := p.GetRunner()
 	if runner == nil {
 		p.Runner = &Run{}
+		p.DefaultRunDealer.Runner = p.Runner
 		p.savedRunner = p.Runner
-		runner = p.Runner
+		runner = p.GetRunner()
 	} else {
 		p.connected = true
 	}
 
-	runner.currentPhase++
-
 	// The Runner is public; we do not want people messing with it in the middle
 	// of a Run
-	if p.previousRun && p.Runner != p.savedRunner {
-		p.Log.Printf("saved: %v, new: %v", p.savedRunner, p.Runner)
+	if p.previousRun && p.GetRunner() != p.savedRunner {
+		p.Log.Printf("saved: %v, new: %v", p.savedRunner, p.GetRunner())
 		return fmt.Errorf("Phase.Run configuration error: the Runner was changed")
 	} else {
-		p.savedRunner = p.Runner
+		p.savedRunner = p.GetRunner()
 	}
 	t := runner.T
 	//  The testing.T on the Runner is public.  We don't want people messing with
@@ -434,18 +594,18 @@ func (p *Phase) run(id string) error {
 	//	}
 
 	if len(p.Setup) > 0 {
-		for i, step := range p.Setup {
+		for _, step := range p.Setup {
 			if step.Modify != nil {
 				if downerStep, ok := step.Modify.(TearDowner); ok {
 					tdFunction := downerStep.Teardown()
 
 					if tdFunction != nil {
-						p.Log.Printf("[R] %vInstalled auto-teardown for %T", idPrefix, step.Modify)
+						p.Log.Printf("[R] %v Installed auto-teardown for %T", idPrefix, step.Modify)
 						p.teardowns = append(p.teardowns, downerStep.Teardown())
 					}
 				}
 			}
-			if err := processStep(t, step, fmt.Sprintf("%v%v.set%d", idPrefix, runner.currentPhase, i), &p.Log, p); err != nil {
+			if err := processStep(t, step, &p.Log, p, SetupRunner); err != nil {
 				if t != nil {
 					t.Fatalf("setup failed: %v", err)
 				}
@@ -453,23 +613,32 @@ func (p *Phase) run(id string) error {
 			}
 			if monitorStep, ok := step.Modify.(Monitor); ok {
 				p.addMonitor(&monitorStep)
-				monitorStep.Monitor(p.savedRunner)
-			}
-		}
-		if d, ok := runner.getRoot().disruptor.(PostSetupHook); ok {
-			log.Printf("[R] Running post-setup hook")
-			err := d.PostSetupHook(runner)
-			if err != nil {
-				runner.T.Errorf("post-setup hook failed: %v", err)
+				monitorStep.Monitor(p.savedRunner.ChildWithT(t, MonitorRunner))
 			}
 		}
 	}
 
 	var savedErr error
 	if len(p.MainSteps) > 0 {
+		// Is this the first phase with MainSteps for this runner?
+		if !p.GetRunner().postSetup {
+			if d, ok := runner.getRoot().disruptor.(PostMainSetupHook); ok &&
+				runner.getRoot() == runner.parent && // We're just above the root
+				!runner.getRoot().postMainSetupDone { // And we're first here
+
+				runner.getRoot().postMainSetupDone = true
+
+				log.Printf("[R] Running post-main-setup hook")
+				err := d.PostMainSetupHook(runner.ChildWithT(t, HookRunner))
+				if err != nil {
+					runner.T.Fatalf("post-setup hook failed: %v", err)
+				}
+			}
+		}
+		p.GetRunner().postSetup = true
 		// log.Printf("Starting main steps")
-		for i, step := range p.MainSteps {
-			if err := processStep(t, step, fmt.Sprintf("%v%v.main%d", idPrefix, runner.currentPhase, i), &p.Log, p); err != nil {
+		for _, step := range p.MainSteps {
+			if err := processStep(t, step, &p.Log, p, StepRunner); err != nil {
 				savedErr = err
 				if t != nil {
 					// TODO: Interact:
@@ -494,8 +663,6 @@ func (p *Phase) run(id string) error {
 		// If we're not running under testing.T's supervision, we need to run
 		// the teardown ourselves.
 
-		// log.Println("Entering teardown phase")
-		// log.Printf("Auto tear downs: %#v", p.teardowns)
 		p.teardown()
 	}
 	return savedErr
@@ -504,7 +671,7 @@ func (p *Phase) run(id string) error {
 // TODO: thought for later.  Could a user control the order of individual teardowns (automatic
 // and explicit) by using different phases?
 func (p *Phase) teardown() {
-	t := p.Runner.T
+	t := p.GetRunner().T
 	// TODO: if both p.Teardown and p.teardowns were the same interface, this could be
 	// a single loop.  Or: leave the individual tear downs to t.Cleanup
 
@@ -512,7 +679,7 @@ func (p *Phase) teardown() {
 		p.Log.Printf("Starting teardown")
 		// This one runs in normal order, since the user listed them themselves
 		for i, step := range p.Teardown {
-			if err := processStep(t, step, fmt.Sprintf("down%v", i), &p.Log, p); err != nil {
+			if err := processStep(t, step, &p.Log, p, TearDownRunner); err != nil {
 				if t == nil {
 					p.Log.Printf("Tear down step %d failed: %v", i, err)
 				} else {
@@ -542,4 +709,28 @@ func (p *Phase) teardown() {
 			}
 		}
 	}
+}
+
+type RunDealer interface {
+	SetRunner(parent *Run, kind RunnerType)
+	GetRunner() *Run
+}
+
+type DefaultRunDealer struct {
+	// Perhaps make this private?
+	// For now it is public to break less things
+	Runner *Run
+}
+
+func (d *DefaultRunDealer) SetRunner(parent *Run, kind RunnerType) {
+	if parent == nil {
+		d.Runner = nil
+		return
+	}
+	r := parent.ChildWithT(parent.T, kind)
+	d.Runner = r
+}
+
+func (d *DefaultRunDealer) GetRunner() *Run {
+	return d.Runner
 }

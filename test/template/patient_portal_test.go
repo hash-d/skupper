@@ -30,13 +30,11 @@ func TestPatientPortalTemplate(t *testing.T) {
 	)
 
 	env := environment.PatientPortalDefault{
-		Runner:       r,
 		AutoTearDown: true,
 	}
 
 	setup := frame2.Phase{
 		Runner: r,
-		Name:   "Patient Portal setup",
 		Doc:    "Deploy Patient Portal on the default topology",
 		Setup: []frame2.Step{
 			{

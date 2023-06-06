@@ -44,7 +44,11 @@ func (c Curl) Validate() error {
 		c.Url,
 		c.CurlOptions,
 	)
-	c.Log.Printf("- Output:\n%v", resp.Output)
+	if resp == nil {
+		c.Log.Printf("- No response from Curl")
+	} else {
+		c.Log.Printf("- Output:\n%v", resp.Output)
+	}
 	if err != nil {
 		c.Log.Printf("- Err: %v", err)
 		return fmt.Errorf("curl invokation failed: %w", err)

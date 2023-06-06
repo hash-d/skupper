@@ -107,6 +107,7 @@ func upgradeSites(targets []*base.ClusterContext, runner *frame2.Run) error {
 
 	for _, t := range targets {
 		steps = append(steps, frame2.Step{
+			Doc: "Upgrade Skupper",
 			Modify: execute.SkupperUpgrade{
 				Runner:    runner,
 				Namespace: t,
@@ -146,6 +147,7 @@ func (u *UpgradeAndFinalize) PreFinalizerHook(runner *frame2.Run) error {
 
 	for _, t := range targets {
 		steps = append(steps, frame2.Step{
+			Doc: "Disruptor UpgradeAndFinalize",
 			Modify: execute.SkupperUpgrade{
 				Runner:    runner,
 				Namespace: t,
@@ -155,6 +157,7 @@ func (u *UpgradeAndFinalize) PreFinalizerHook(runner *frame2.Run) error {
 	}
 	phase := frame2.Phase{
 		Runner:    runner,
+		Doc:       "Disruptor UpgradeAndFinalize",
 		MainSteps: steps,
 	}
 	return phase.Run()
@@ -198,7 +201,7 @@ func (m MixedVersionVan) DisruptorEnvValue() string {
 	return "MIXED_VERSION_VAN"
 }
 
-func (m *MixedVersionVan) PostSetupHook(runner *frame2.Run) error {
+func (m *MixedVersionVan) PostMainSetupHook(runner *frame2.Run) error {
 	m.useNew = true
 	targets := sortUpgradeTargets(m.targets)
 

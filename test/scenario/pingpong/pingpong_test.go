@@ -9,10 +9,12 @@
 // Options:
 //
 // TODO
-// - remove service first
-// - remove link first
-// - skupper delete, direct
-// - or remove the target deployment
+//   - remove service first
+//   - remove link first
+//   - skupper delete, direct
+//   - or remove the target deployment
+//   - Consider changing the retry configurations by KeepTrying with a
+//     context that has a deadline close to the test's.
 //
 // By default, use a different one each time, but allow
 // for selecting a single one
@@ -221,7 +223,7 @@ func (m *MoveToRight) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  5,
+		Allow:  50,
 		Ignore: 5,
 		Ensure: 5,
 	}
@@ -275,7 +277,8 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
-								Target: m.RightBack,
+								Target:        m.RightBack,
+								SkupperExpose: true,
 							},
 							Validator:      &validateHW,
 							ValidatorRetry: validateOpts,
@@ -320,7 +323,7 @@ func (m *MoveToLeft) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  5,
+		Allow:  50,
 		Ignore: 5,
 		Ensure: 5,
 	}
@@ -374,8 +377,9 @@ func (m *MoveToLeft) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
-								Runner: m.Runner,
-								Target: m.LeftBack,
+								Runner:        m.Runner,
+								Target:        m.LeftBack,
+								SkupperExpose: true,
 							},
 							Validator:      &validateHW,
 							ValidatorRetry: validateOpts,

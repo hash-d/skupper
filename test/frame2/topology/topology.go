@@ -242,20 +242,20 @@ func (tv TopologyValidator) Execute() error {
 // This ties together Topology, TopologyConnect
 // and other items
 type TopologyBuild struct {
-	Runner *frame2.Run
-
 	Topology     *Basic
 	AutoTearDown bool
 
 	// TODO Remove this?
 	teardowns []frame2.Executor
+
+	frame2.DefaultRunDealer
 }
 
 func (t *TopologyBuild) Execute() error {
 
-	// Create the Topology
 	steps := frame2.Phase{
-		Runner: t.Runner,
+		Runner: t.GetRunner(),
+		Doc:    "Create the topology",
 		MainSteps: []frame2.Step{
 			{
 				Modify: *t.Topology,

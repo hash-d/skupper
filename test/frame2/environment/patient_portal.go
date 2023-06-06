@@ -12,12 +12,12 @@ import (
 // on the default topology
 type PatientPortalDefault struct {
 	Name         string
-	Runner       *frame2.Run
 	AutoTearDown bool
 
 	// Return
 
 	TopoReturn topology.Basic
+	frame2.DefaultRunDealer
 }
 
 func (p *PatientPortalDefault) Execute() error {
@@ -37,12 +37,12 @@ func (p *PatientPortalDefault) Execute() error {
 
 	p.TopoReturn = topoSimplest
 
-	execute := frame2.Phase{
-		Runner: p.Runner,
+	execute := &frame2.Phase{
+		Runner: p.GetRunner(),
+		Doc:    "Default Patient Portal deployment",
 		MainSteps: []frame2.Step{
 			{
-				Modify: PatientPortal{
-					Runner:        p.Runner,
+				Modify: &PatientPortal{
 					Topology:      &topoSimplest,
 					AutoTearDown:  p.AutoTearDown,
 					SkupperExpose: true,
@@ -55,21 +55,22 @@ func (p *PatientPortalDefault) Execute() error {
 }
 
 type PatientPortal struct {
-	Runner        *frame2.Run // Required for autoTeardown and step logging
 	Topology      *topology.Basic
 	AutoTearDown  bool
 	SkupperExpose bool
+
+	frame2.DefaultRunDealer
 }
 
 func (p PatientPortal) Execute() error {
 	topo := topology.TopologyBuild{
-		Runner:       p.Runner,
 		Topology:     p.Topology,
 		AutoTearDown: p.AutoTearDown,
 	}
 
 	execute := frame2.Phase{
-		Runner: p.Runner,
+		Runner: p.GetRunner(),
+		Doc:    "Deploy a Patient Portal environment",
 		MainSteps: []frame2.Step{
 			{
 				Modify: &topo,
