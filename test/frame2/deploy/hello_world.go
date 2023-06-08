@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/frame2/execute"
 	"github.com/skupperproject/skupper/test/frame2/topology"
 	"github.com/skupperproject/skupper/test/frame2/validate"
 	"github.com/skupperproject/skupper/test/utils/base"
-	"github.com/skupperproject/skupper/test/utils/constants"
 	"github.com/skupperproject/skupper/test/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 )
@@ -140,15 +138,14 @@ func (h *HelloWorldBackend) Execute() error {
 					Protocol:  proto,
 				},
 				SkipWhen: h.CreateServices || !h.SkupperExpose,
+				Validator: execute.K8SDeploymentWait{
+					Namespace: h.Target,
+					Name:      "hello-world-backend",
+				},
 			},
 		},
 	}
-	phase.Run()
-
-	if _, err := kube.WaitDeploymentReady("hello-world-backend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
-		return err
-	}
-	return nil
+	return phase.Run()
 }
 
 type HelloWorldFrontend struct {
@@ -220,16 +217,15 @@ func (h *HelloWorldFrontend) Execute() error {
 					Name:      "hello-world-frontend",
 					Protocol:  proto,
 				},
+				Validator: execute.K8SDeploymentWait{
+					Namespace: h.Target,
+					Name:      "hello-world-frontend",
+				},
 				SkipWhen: h.CreateServices || !h.SkupperExpose,
 			},
 		},
 	}
-	phase.Run()
-
-	if _, err := kube.WaitDeploymentReady("hello-world-frontend", h.Target.Namespace, h.Target.VanClient.KubeClient, constants.ImagePullingAndResourceCreationTimeout, constants.DefaultTick); err != nil {
-		return err
-	}
-	return nil
+	return phase.Run()
 }
 
 // Validates a Hello World deployment by Curl from the given Namespace.

@@ -22,6 +22,7 @@ package pingpong
 
 import (
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -46,7 +47,10 @@ func TestPingPong(t *testing.T) {
 		T: t,
 	}
 	defer r.Report()
-	r.AllowDisruptors([]frame2.Disruptor{&disruptors.NoHttp{}})
+	r.AllowDisruptors([]frame2.Disruptor{
+		&disruptors.NoHttp{},
+		&disruptors.DeploymentConfigBlindly{},
+	})
 
 	var topologyV topology.Basic
 	topologyV = &topologies.V{
@@ -269,6 +273,7 @@ func (m *MoveToRight) Execute() error {
 			}, {
 				Doc: "Move backend from left to right",
 				Modify: &composite.Migrate{
+					Runner:   m.Runner,
 					From:     m.LeftBack,
 					To:       m.RightBack,
 					LinkTo:   []*base.ClusterContext{m.RightFront},
@@ -277,6 +282,7 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
+								Runner:        m.Runner,
 								Target:        m.RightBack,
 								SkupperExpose: true,
 							},
@@ -369,6 +375,7 @@ func (m *MoveToLeft) Execute() error {
 			}, {
 				Doc: "Move backend from right to left",
 				Modify: &composite.Migrate{
+					Runner:   m.Runner,
 					From:     m.RightBack,
 					To:       m.LeftBack,
 					LinkTo:   []*base.ClusterContext{m.LeftFront},
@@ -403,4 +410,10 @@ func (m *MoveToLeft) Execute() error {
 	}
 
 	return p.Run()
+}
+
+// TestMain initializes flag parsing
+func TestMain(m *testing.M) {
+	base.ParseFlags()
+	os.Exit(m.Run())
 }

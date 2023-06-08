@@ -26,10 +26,12 @@ func (s *SkupperDelete) Execute() error {
 		return fmt.Errorf("SkupperDelete failed to remove SiteConfig: %w", err)
 	}
 
-	err = s.Namespace.VanClient.RouterRemove(ctx)
-	if err != nil {
-		return fmt.Errorf("SkupperDelete failed to remove Router: %w", err)
-	}
+	// This is done automatically when site config is removed.
+	// See https://github.com/skupperproject/skupper/issues/765
+	// 	err = s.Namespace.VanClient.RouterRemove(ctx)
+	// 	if err != nil {
+	// 		return fmt.Errorf("SkupperDelete failed to remove Router: %w", err)
+	// 	}
 
 	return nil
 }

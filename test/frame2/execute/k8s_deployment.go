@@ -1,5 +1,7 @@
 package execute
 
+// try to keep this file in sync with ocp_deploymentconfig
+
 import (
 	"context"
 	"fmt"
@@ -109,20 +111,110 @@ type K8SDeploymentGet struct {
 	frame2.Log
 }
 
-func (kdg K8SDeploymentGet) Validate() error {
+func (kdg *K8SDeploymentGet) Validate() error {
 	ctx := frame2.ContextOrDefault(kdg.Ctx)
 
 	var err error
 	kdg.Result, err = kdg.Namespace.VanClient.KubeClient.AppsV1().Deployments(kdg.Namespace.Namespace).Get(ctx, kdg.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to get deployment %q: %w", kdg.Name, err)
+		return fmt.Errorf("failed to get deployment %q: %w", kdg.Name, err)
 	}
 
 	if kdg.Result.Status.ReadyReplicas < 1 {
-		return fmt.Errorf("Deployment %q has no ready replicas", kdg.Name)
+		return fmt.Errorf("deployment %q has no ready replicas", kdg.Name)
 	}
 
 	return nil
+}
+
+// Wait for the named deployment to be available.  By default, it
+// waits for up to two minutes, and ensures that the deployment reports
+// as ready for at least 10s.
+//
+// That behavior can be changed using the RetryOptions field. On that
+// field, the Ctx field cannot be set; if a different timeout is desired,
+// set it on the Action's Ctx itself, and it will be used for the
+// RetryOptions.
+type K8SDeploymentWait struct {
+	Name      string
+	Namespace *base.ClusterContext
+	Ctx       context.Context
+
+	// On this field, do not set the context.  Use the K8SDeploymentWait.Ctx,
+	// instead, it will be used for the underlying Retry
+	RetryOptions frame2.RetryOptions
+	frame2.DefaultRunDealer
+	*frame2.Log
+}
+
+func (w K8SDeploymentWait) Validate() error {
+	if w.RetryOptions.Ctx != nil {
+		panic("RetryOptions.Ctx cannot be set for K8SDeploymentWait")
+	}
+	retry := w.RetryOptions
+	if retry.IsEmpty() {
+		ctx, cancel := context.WithTimeout(frame2.ContextOrDefault(w.Ctx), time.Minute*2)
+		defer cancel()
+		retry = frame2.RetryOptions{
+			Ctx:        ctx,
+			KeepTrying: true,
+			Ensure:     10,
+		}
+	}
+	phase := frame2.Phase{
+		Runner: w.GetRunner(),
+		Doc:    fmt.Sprintf("Waiting for deployment %q on ns %q", w.Name, w.Namespace.Namespace),
+		MainSteps: []frame2.Step{
+			{
+				// TODO: stuff within functions need their runners replaced?
+				ValidatorRetry: retry,
+				Validator: &Function{
+					Fn: func() error {
+						validator := &K8SDeploymentGet{
+							Namespace: w.Namespace,
+							Name:      w.Name,
+						}
+						inner1 := frame2.Phase{
+							Runner: w.GetRunner(),
+							Doc:    fmt.Sprintf("Get the deployment %q on ns %q", w.Name, w.Namespace.Namespace),
+							MainSteps: []frame2.Step{
+								{
+									Validator: validator,
+								},
+							},
+						}
+						err := inner1.Run()
+						if err != nil {
+							return err
+						}
+
+						inner2 := frame2.Phase{
+							Runner: w.GetRunner(),
+							Doc:    fmt.Sprintf("Check that the deployment %q is ready", w.Name),
+							MainSteps: []frame2.Step{
+								{
+									Validator: &Function{
+										Fn: func() error {
+											if validator.Result == nil {
+												return fmt.Errorf("deployment not ready: result is nil")
+											}
+											if validator.Result.Status.ReadyReplicas == 0 {
+												return fmt.Errorf("deployment not ready: ready replicas is 0")
+											}
+											return nil
+										},
+									},
+								},
+							},
+						}
+						return inner2.Run()
+					},
+				},
+			},
+		},
+	}
+
+	return phase.Run()
 }
 
 type K8SDeploymentAnnotate struct {
@@ -159,6 +251,7 @@ type K8SUndeploy struct {
 	Wait      time.Duration // Waits for the deployment to be gone.  Otherwise, returns as soon as the delete instruction has been issued.  If the wait lapses, return an error.
 
 	Ctx context.Context
+	frame2.DefaultRunDealer
 }
 
 func (k *K8SUndeploy) Execute() error {

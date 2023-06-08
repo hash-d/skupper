@@ -58,6 +58,25 @@ type RetryOptions struct {
 	Timeout    time.Duration
 }
 
+// Checks whether any fields on the struct have been set
+func (r RetryOptions) IsEmpty() bool {
+	if r.Allow != 0 ||
+		r.Ignore != 0 ||
+		r.Ensure != 0 ||
+		r.Retries != 0 ||
+		r.Interval != 0 ||
+		r.Quiet != false ||
+		r.Min != 0 ||
+		r.Rate != 0 ||
+		r.KeepTrying != false ||
+		r.Ctx != nil ||
+		r.Timeout != 0 {
+		return false
+	}
+
+	return true
+}
+
 func (r Retry) Run() ([]error, error) {
 	interval := r.Options.Interval
 	if interval == 0 {

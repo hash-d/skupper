@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skupperproject/skupper/test/utils/base"
 )
@@ -389,17 +390,19 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 		id := modifyRunner.GetId()
 		Log.Printf("[R] %v Modifier %T", id, step.Modify)
 		var err error
+		start := time.Now()
 		if phase, ok := step.Modify.(Phase); ok {
 			err = phase.runP(modifyRunner)
 		} else {
 			// This is a simple executor; we just execute it
 			err = step.Modify.Execute()
 		}
+		duration := time.Now().Sub(start)
 		if err != nil {
-			Log.Printf("[R] %v not-ok", id)
+			Log.Printf("[R] %v not-ok %T (%v)", id, step.Modify, duration)
 			return fmt.Errorf("modify step failed: %w", err)
 		} else {
-			Log.Printf("[R] %v finished-ok", id)
+			Log.Printf("[R] %v finished-ok %T (%v)", id, step.Modify, duration)
 		}
 	}
 

@@ -141,7 +141,8 @@ func (c Container) Run() error {
 			}
 
 			if c.StatusCheck {
-				if !*status.Started {
+				// OCP 3.11 returns status.Started as nil, so the first check is required
+				if status.Started != nil && !*status.Started {
 					return fmt.Errorf("container %q (%v restarts) reports as not started", status.Name, status.RestartCount)
 				}
 				if !status.Ready {
