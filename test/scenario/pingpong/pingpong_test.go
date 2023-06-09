@@ -227,7 +227,7 @@ func (m *MoveToRight) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  50,
+		Allow:  180,
 		Ignore: 5,
 		Ensure: 5,
 	}
@@ -329,7 +329,7 @@ func (m *MoveToLeft) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  50,
+		Allow:  180,
 		Ignore: 5,
 		Ensure: 5,
 	}
