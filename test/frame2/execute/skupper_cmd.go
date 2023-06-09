@@ -30,6 +30,14 @@ func (cs *CliSkupper) Execute() error {
 	log.Printf("execute.CliSkupper %v", cs.Args)
 	//	log.Printf("%#v", cs)
 	baseArgs := []string{}
+
+	// TODO change this when adding Podman to frame2
+	baseArgs = append(baseArgs, "--platform", "kubernetes")
+
+	if cs.ClusterContext != nil {
+		baseArgs = append(baseArgs, "--kubeconfig", cs.ClusterContext.KubeConfig)
+	}
+
 	if cs.Namespace != "" {
 		baseArgs = append(baseArgs, "--namespace", cs.Namespace)
 	} else {
