@@ -21,6 +21,8 @@ type Kubectl struct {
 
 func (k Kubectl) Execute() error {
 
+	// TODO: add --kubeconfig based on k.ClusterContext
+
 	if k.Cmd.Shell {
 		k.Cmd.Command = "kubectl " + k.Cmd.Command
 	} else {

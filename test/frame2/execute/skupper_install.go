@@ -102,9 +102,10 @@ func (sis SkupperInstallSimple) Execute() error {
 				//	},
 				//},
 				Modify: CliSkupperInstall{
-					Runner:        sis.Runner,
-					Namespace:     sis.Namespace,
-					EnableConsole: sis.EnableConsole,
+					Runner:              sis.Runner,
+					Namespace:           sis.Namespace,
+					EnableConsole:       sis.EnableConsole,
+					EnableFlowCollector: sis.EnableConsole,
 					//
 				},
 			},
@@ -114,13 +115,14 @@ func (sis SkupperInstallSimple) Execute() error {
 }
 
 type CliSkupperInstall struct {
-	Namespace     *base.ClusterContext
-	Ctx           context.Context
-	MaxWait       time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
-	SkipWait      bool
-	SkipStatus    bool
-	EnableConsole bool
-	Runner        *frame2.Run
+	Namespace           *base.ClusterContext
+	Ctx                 context.Context
+	MaxWait             time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
+	SkipWait            bool
+	SkipStatus          bool
+	EnableConsole       bool
+	EnableFlowCollector bool
+	Runner              *frame2.Run
 }
 
 // Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
@@ -133,7 +135,11 @@ func (s CliSkupperInstall) Execute() error {
 	args := []string{"init"}
 
 	if s.EnableConsole {
-		args = append(args, "--enable-console", "--enable-flow-collector")
+		args = append(args, "--enable-console")
+	}
+
+	if s.EnableFlowCollector {
+		args = append(args, "--enable-flow-collector")
 	}
 
 	phase := frame2.Phase{

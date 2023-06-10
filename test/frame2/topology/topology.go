@@ -107,6 +107,8 @@ type TopologyItem struct {
 	//       topology items, so site-specific configurations
 	//       can be done (such as activating the console)
 	EnableConsole bool
+	// TODO
+	EnableFlowCollector bool
 }
 
 // TopologyMap receives a list of TopologyItem that describe the topology.

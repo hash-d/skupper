@@ -23,11 +23,11 @@ type SkupperUpgrade struct {
 	// false and no manifest available, panic
 	SkipManifest bool
 
-	// TODO
 	// Location of the manifest file to be used on the manifest/image
 	// tag check.  If empty, check: (?)
-	// - Current dir
-	// - Test root dir
+	// - Current dir (ie, etc package dir)
+	// - Source root dir
+	// TODO
 	// - Same directory as the skupper binary
 	ManifestFile string
 
@@ -91,5 +91,42 @@ func (s SkupperUpgrade) Execute() error {
 			},
 		},
 	}
-	return phase.Run()
+	err := phase.Run()
+	if err != nil {
+		return err
+	}
+	if s.SkipManifest {
+		return nil
+	}
+
+	skupperInfo := validate.SkupperInfo{
+		Namespace: s.Namespace,
+		Ctx:       s.Ctx,
+	}
+	getInfoPhase := frame2.Phase{
+		Runner: s.Runner,
+		Doc:    "Get the newly-upgrade Skupper info",
+		MainSteps: []frame2.Step{
+			{
+				Validator: &skupperInfo,
+			},
+		},
+	}
+	err = getInfoPhase.Run()
+	if err != nil {
+		return err
+	}
+
+	checkManifestPhase := frame2.Phase{
+		Runner: s.Runner,
+		Doc:    "Compare Skupper images to the manifest.json",
+		MainSteps: []frame2.Step{
+			{
+				Validator: &validate.SkupperManifest{
+					Expected: skupperInfo.Result.Images,
+				},
+			},
+		},
+	}
+	return checkManifestPhase.Run()
 }

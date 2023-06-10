@@ -11,6 +11,9 @@ type Simplest struct {
 	Name           string
 	TestRunnerBase *base.ClusterTestRunnerBase
 
+	ConsoleOnPublic  bool
+	ConsoleOnPrivate bool
+
 	// Add on
 	*contextHolder
 
@@ -20,10 +23,14 @@ type Simplest struct {
 func (s *Simplest) Execute() error {
 
 	pub1 := &topology.TopologyItem{
-		Type: topology.Public,
+		Type:                topology.Public,
+		EnableConsole:       s.ConsoleOnPublic,
+		EnableFlowCollector: s.ConsoleOnPublic,
 	}
 	prv1 := &topology.TopologyItem{
-		Type: topology.Private,
+		Type:                topology.Private,
+		EnableConsole:       s.ConsoleOnPrivate,
+		EnableFlowCollector: s.ConsoleOnPrivate,
 		Connections: []*topology.TopologyItem{
 			pub1,
 		},

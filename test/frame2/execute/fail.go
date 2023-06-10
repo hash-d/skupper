@@ -1,10 +1,11 @@
 package execute
 
-import "errors"
+import "fmt"
 
 type Fail struct {
+	Reason string
 }
 
 func (f Fail) Execute() error {
-	return errors.New("execute.Fail failed as requested")
+	return fmt.Errorf("execute.Fail failed as requested (%q)", f.Reason)
 }

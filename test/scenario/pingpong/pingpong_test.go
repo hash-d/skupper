@@ -102,9 +102,10 @@ func TestPingPong(t *testing.T) {
 					Runner:    &r,
 				},
 				ValidatorRetry: frame2.RetryOptions{
-					Allow:  60,
-					Ignore: 5,
-					Ensure: 5,
+					Ignore:     5,
+					Ensure:     5,
+					KeepTrying: true,
+					Timeout:    time.Minute * 30,
 				},
 			}, {
 
@@ -227,9 +228,10 @@ func (m *MoveToRight) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  180,
-		Ignore: 5,
-		Ensure: 5,
+		Ignore:     5,
+		Ensure:     5,
+		Timeout:    time.Minute * 30,
+		KeepTrying: true,
 	}
 
 	p := frame2.Phase{
@@ -329,9 +331,10 @@ func (m *MoveToLeft) Execute() error {
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
-		Allow:  180,
-		Ignore: 5,
-		Ensure: 5,
+		Ignore:     5,
+		Ensure:     5,
+		Timeout:    time.Minute * 30,
+		KeepTrying: true,
 	}
 
 	p := frame2.Phase{

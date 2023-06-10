@@ -30,7 +30,8 @@ func TestPatientPortalTemplate(t *testing.T) {
 	)
 
 	env := environment.PatientPortalDefault{
-		AutoTearDown: true,
+		AutoTearDown:  true,
+		EnableConsole: true,
 	}
 
 	setup := frame2.Phase{

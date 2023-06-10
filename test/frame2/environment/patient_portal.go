@@ -14,6 +14,9 @@ type PatientPortalDefault struct {
 	Name         string
 	AutoTearDown bool
 
+	// If true, console will be enabled on prv1
+	EnableConsole bool
+
 	// Return
 
 	TopoReturn topology.Basic
@@ -31,8 +34,9 @@ func (p *PatientPortalDefault) Execute() error {
 
 	var topoSimplest topology.Basic
 	topoSimplest = &topologies.Simplest{
-		Name:           name,
-		TestRunnerBase: &baseRunner,
+		Name:             name,
+		TestRunnerBase:   &baseRunner,
+		ConsoleOnPrivate: p.EnableConsole,
 	}
 
 	p.TopoReturn = topoSimplest
@@ -58,6 +62,9 @@ type PatientPortal struct {
 	Topology      *topology.Basic
 	AutoTearDown  bool
 	SkupperExpose bool
+
+	// If true, console will be enabled on prv1
+	EnableConsole bool
 
 	frame2.DefaultRunDealer
 }
