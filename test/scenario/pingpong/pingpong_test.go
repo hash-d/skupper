@@ -53,6 +53,8 @@ func TestPingPong(t *testing.T) {
 		&disruptors.DeploymentConfigBlindly{},
 		&disruptors.MixedVersionVan{},
 		&disruptors.UpgradeAndFinalize{},
+		&disruptors.NoConsole{},
+		&disruptors.NoFlowCollector{},
 	})
 
 	var topologyV topology.Basic
@@ -145,7 +147,6 @@ func TestPingPong(t *testing.T) {
 				}, {
 					Name: "Move to right",
 					Modify: &MoveToRight{
-						Runner:     &r,
 						Topology:   topologyV.(topology.TwoBranched),
 						LeftFront:  leftFront,
 						LeftBack:   leftBack,
@@ -165,7 +166,6 @@ func TestPingPong(t *testing.T) {
 				}, {
 					Name: "Move to left",
 					Modify: &MoveToLeft{
-						Runner:     &r,
 						Topology:   topologyV.(topology.TwoBranched),
 						LeftFront:  leftFront,
 						LeftBack:   leftBack,
@@ -213,13 +213,14 @@ func TestPingPong(t *testing.T) {
 }
 
 type MoveToRight struct {
-	Runner     *frame2.Run
 	Topology   topology.TwoBranched
 	Vertex     *base.ClusterContext
 	LeftFront  *base.ClusterContext
 	LeftBack   *base.ClusterContext
 	RightFront *base.ClusterContext
 	RightBack  *base.ClusterContext
+
+	frame2.DefaultRunDealer
 }
 
 // TODO: can this be made more generic, instead?
@@ -227,7 +228,6 @@ func (m *MoveToRight) Execute() error {
 
 	log.Printf("LF: %+v\nLB: %+v\nRF: %+v\nRB: %+v\nVX: %+v\n", m.LeftFront, m.LeftBack, m.RightFront, m.RightBack, m.Vertex)
 	validateHW := deploy.HelloWorldValidate{
-		Runner:    m.Runner,
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{
@@ -244,7 +244,6 @@ func (m *MoveToRight) Execute() error {
 			{
 				Doc: "Move frontend from left to right",
 				Modify: &composite.Migrate{
-					Runner:     m.Runner,
 					From:       m.LeftFront,
 					To:         m.RightFront,
 					LinkTo:     []*base.ClusterContext{},
@@ -277,7 +276,6 @@ func (m *MoveToRight) Execute() error {
 			}, {
 				Doc: "Move backend from left to right",
 				Modify: &composite.Migrate{
-					Runner:   m.Runner,
 					From:     m.LeftBack,
 					To:       m.RightBack,
 					LinkTo:   []*base.ClusterContext{m.RightFront},
@@ -314,13 +312,14 @@ func (m *MoveToRight) Execute() error {
 }
 
 type MoveToLeft struct {
-	Runner     *frame2.Run
 	Topology   topology.TwoBranched
 	Vertex     *base.ClusterContext
 	LeftFront  *base.ClusterContext
 	LeftBack   *base.ClusterContext
 	RightFront *base.ClusterContext
 	RightBack  *base.ClusterContext
+
+	frame2.DefaultRunDealer
 }
 
 // TODO: can this be made more generic, instead?
@@ -345,7 +344,6 @@ func (m *MoveToLeft) Execute() error {
 			{
 				Doc: "Move frontend from right to left",
 				Modify: &composite.Migrate{
-					Runner:     m.Runner,
 					From:       m.RightFront,
 					To:         m.LeftFront,
 					LinkTo:     []*base.ClusterContext{},
@@ -378,7 +376,6 @@ func (m *MoveToLeft) Execute() error {
 			}, {
 				Doc: "Move backend from right to left",
 				Modify: &composite.Migrate{
-					Runner:   m.Runner,
 					From:     m.RightBack,
 					To:       m.LeftBack,
 					LinkTo:   []*base.ClusterContext{m.LeftFront},

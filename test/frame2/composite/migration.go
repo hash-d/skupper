@@ -21,7 +21,6 @@ import (
 // step or after the link step (for the situations, for example,
 // where the application depends on other services on the VAN)
 type Migrate struct {
-	Runner              *frame2.Run
 	From                *base.ClusterContext
 	To                  *base.ClusterContext
 	DeploySteps         []frame2.Step
@@ -31,6 +30,8 @@ type Migrate struct {
 	UnlinkFrom          []*base.ClusterContext // Avoids dangling link configuration
 	DeployBeforeSkupper bool
 	AssertFromEmpty     bool
+
+	frame2.DefaultRunDealer
 
 	// Application validation?
 	// TODO: change (Un)DeploySteps from frame2.Step to new frame2.TargetSetter
@@ -53,7 +54,7 @@ func (m *Migrate) Execute() error {
 		MainSteps: []frame2.Step{
 			{
 				Doc: fmt.Sprintf("Install Skupper on new namespace %q", m.To.Namespace),
-				Modify: execute.SkupperInstallSimple{
+				Modify: &execute.SkupperInstallSimple{
 					Namespace: m.To,
 				},
 			},

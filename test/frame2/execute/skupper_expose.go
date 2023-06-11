@@ -25,8 +25,6 @@ type SkupperExpose struct {
 	// expected failure.
 	FailureReason string
 
-	Runner *frame2.Run
-
 	Address                string
 	Headless               bool
 	Protocol               string
@@ -35,6 +33,8 @@ type SkupperExpose struct {
 	TargetPorts            []string
 
 	AutoTeardown bool
+
+	frame2.DefaultRunDealer
 }
 
 func (se SkupperExpose) Execute() error {

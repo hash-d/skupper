@@ -84,7 +84,7 @@ func (hw HelloWorld) Execute() error {
 			{
 				Modify: &topo,
 			}, {
-				Modify: deploy.HelloWorld{
+				Modify: &deploy.HelloWorld{
 					Topology:      hw.Topology,
 					SkupperExpose: hw.SkupperExpose,
 				},

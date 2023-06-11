@@ -119,7 +119,6 @@ func (h *HelloWorldBackend) Execute() error {
 			}, {
 				Doc: "Exposing the local service via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    h.Runner,
 					Namespace: h.Target,
 					Type:      "service",
 					Name:      "hello-world-backend",
@@ -129,7 +128,6 @@ func (h *HelloWorldBackend) Execute() error {
 			}, {
 				Doc: "Exposing the deployment via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    h.Runner,
 					Namespace: h.Target,
 					Ports:     []int{8080},
 					Type:      "deployment",
@@ -200,7 +198,6 @@ func (h *HelloWorldFrontend) Execute() error {
 			}, {
 				Doc: "Exposing the local service via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    h.Runner,
 					Namespace: h.Target,
 					Type:      "service",
 					Name:      "hello-world-frontend",
@@ -210,7 +207,6 @@ func (h *HelloWorldFrontend) Execute() error {
 			}, {
 				Doc: "Exposing the deployment via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    h.Runner,
 					Namespace: h.Target,
 					Ports:     []int{8080},
 					Type:      "deployment",

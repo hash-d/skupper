@@ -4,6 +4,15 @@ type Disruptor interface {
 	DisruptorEnvValue() string
 }
 
+// This is just a marker to indicate that the disruptor does
+// not need to be listed on Run.AlwaysDisruptor on the test;
+// just having it on the environment will suffice for it to
+// take effect
+type AlwaysDisruptor interface {
+	// This is just a marker; it does nothing
+	AlwaysDisruptor()
+}
+
 // Disruptors that implement the Inspector interface will
 // have its Inspect() function called before each step is
 // executed.

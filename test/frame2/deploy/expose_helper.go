@@ -64,7 +64,6 @@ func (e ExposeHelper) Execute() error {
 			}, {
 				Doc: "Exposing the local service via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    e.Runner,
 					Namespace: e.Target,
 					Type:      "service",
 					Name:      e.ServiceName,
@@ -74,7 +73,6 @@ func (e ExposeHelper) Execute() error {
 			}, {
 				Doc: "Exposing the deployment via Skupper",
 				Modify: &execute.SkupperExpose{
-					Runner:    e.Runner,
 					Namespace: e.Target,
 					Ports:     e.ServicePorts,
 					Type:      "deployment",

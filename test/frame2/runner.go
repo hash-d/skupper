@@ -42,7 +42,7 @@ type Run struct {
 	ctx               context.Context
 	cancelCtx         context.CancelFunc
 	root              *Run // TODO Perhaps replace this by a recursive call, now we have parent
-	disruptor         Disruptor
+	disruptor         []Disruptor
 	parent            *Run
 	children          []*Run
 	kind              RunnerType
@@ -188,14 +188,16 @@ func (r *Run) getRoot() *Run {
 // Run steps that are still part of the test, but must be run at its very end,
 // right before the tear down.  Failures here will count as test failure
 func (r *Run) Finalize() {
-	if d, ok := r.getRoot().disruptor.(PreFinalizerHook); ok {
-		log.Printf("[R] Running pre-finalizer hook")
-		var err error
-		r.T.Run("pre-finalizer-hook", func(t *testing.T) {
-			err = d.PreFinalizerHook(r.ChildWithT(t, HookRunner))
-		})
-		if err != nil {
-			r.T.Errorf("pre-finalizer hook failed: %v", err)
+	for _, d := range r.getRoot().disruptor {
+		if d, ok := d.(PreFinalizerHook); ok {
+			log.Printf("[R] Running pre-finalizer hook")
+			var err error
+			r.T.Run("pre-finalizer-hook", func(t *testing.T) {
+				err = d.PreFinalizerHook(r.ChildWithT(t, HookRunner))
+			})
+			if err != nil {
+				r.T.Errorf("pre-finalizer hook failed: %v", err)
+			}
 		}
 	}
 	log.Printf("[R] Running finalizers")
@@ -256,8 +258,9 @@ func (r *Run) Report() {
 // List the disruptors that a test accepts, and initialize a disruptor if
 // SKUPPER_TEST_DISRUPTOR set on the environment matches a disruptor from the list.
 //
-// If no matches to the environment variable, the test will be skipped in this
-// run (ie, a disruptor test was requested, but the test does not allow for it).
+// If any of the values on the environment variable does not match a value on
+// the list, the test will be skipped in this run (ie, a disruptor test was
+// requested, but the test does not allow for it).
 //
 // If the environment variable is empty, this is a no-op.
 //
@@ -273,19 +276,33 @@ func (r *Run) AllowDisruptors(list []Disruptor) {
 	}
 
 	if r.getRoot().disruptor != nil {
-		r.savedT.Fatalf("attempt to re-define the disruptor. Was %s", r.getRoot().disruptor)
+		r.T.Fatalf("attempt to re-define the disruptor. Was %s", r.getRoot().disruptor)
 	}
 
-	for _, i := range list {
-		if d, ok := i.(Disruptor); ok {
-			if d.DisruptorEnvValue() == kind {
-				log.Printf("DISRUPTOR: %v", kind)
-				r.getRoot().disruptor = d
-				return
+	disruptor_list := strings.Split(kind, ",")
+
+outer:
+	for _, d := range disruptor_list {
+		for _, allowed := range list {
+			if d == allowed.DisruptorEnvValue() {
+				log.Printf("DISRUPTOR: %v", d)
+				r.getRoot().disruptor = append(r.getRoot().disruptor, allowed)
+				continue outer
 			}
 		}
+		r.T.Skipf("This test does not support the disruptor %v", d)
 	}
-	r.T.Skipf("This test does not support the disruptor %v", kind)
+
+	/* TODO This should replace the loop above; check for any AlwaysDisruptors
+	 *      However, how to get the Disruptor class for the given env variable
+	 *      value?  This will need some type of plugin 'subscription'
+	for _, d := range r.getRoot().disruptor {
+		if _, ok := d.(AlwaysDisruptor); ok {
+			log.Printf("DISRUPTOR: %v", d)
+			r.getRoot
+		}
+	}
+	*/
 
 }
 
@@ -372,10 +389,11 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 	id := stepRunner.GetId()
 	Log.Printf("[R] %v doc %q", id, step.Doc)
 
-	disruptor := p.GetRunner().getRoot().disruptor
-	if disruptor != nil {
-		if disruptor, ok := disruptor.(Inspector); ok {
-			disruptor.Inspect(&step, p)
+	for _, disruptor := range p.GetRunner().getRoot().disruptor {
+		if disruptor != nil {
+			if disruptor, ok := disruptor.(Inspector); ok {
+				disruptor.Inspect(&step, p)
+			}
 		}
 	}
 
@@ -625,16 +643,18 @@ func (p *Phase) run() error {
 	if len(p.MainSteps) > 0 {
 		// Is this the first phase with MainSteps for this runner?
 		if !p.GetRunner().postSetup {
-			if d, ok := runner.getRoot().disruptor.(PostMainSetupHook); ok &&
-				runner.getRoot() == runner.parent && // We're just above the root
-				!runner.getRoot().postMainSetupDone { // And we're first here
+			for _, disruptor := range runner.getRoot().disruptor {
+				if d, ok := disruptor.(PostMainSetupHook); ok &&
+					runner.getRoot() == runner.parent && // We're just above the root
+					!runner.getRoot().postMainSetupDone { // And we're first here
 
-				runner.getRoot().postMainSetupDone = true
+					runner.getRoot().postMainSetupDone = true
 
-				log.Printf("[R] Running post-main-setup hook")
-				err := d.PostMainSetupHook(runner.ChildWithT(t, HookRunner))
-				if err != nil {
-					runner.T.Fatalf("post-setup hook failed: %v", err)
+					log.Printf("[R] Running post-main-setup hook")
+					err := d.PostMainSetupHook(runner.ChildWithT(t, HookRunner))
+					if err != nil {
+						runner.T.Fatalf("post-setup hook failed: %v", err)
+					}
 				}
 			}
 		}
