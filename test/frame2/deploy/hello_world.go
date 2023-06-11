@@ -229,12 +229,12 @@ func (h *HelloWorldFrontend) Execute() error {
 // The individual validaators (front and back) may be configured, but generally do not need to;
 // they'll use the default values.
 type HelloWorldValidate struct {
-	Runner                  *frame2.Run
 	Namespace               *base.ClusterContext
 	HelloWorldValidateFront HelloWorldValidateFront
 	HelloWorldValidateBack  HelloWorldValidateBack
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (h HelloWorldValidate) Validate() error {

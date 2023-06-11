@@ -1,6 +1,7 @@
 package frame2
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -55,6 +56,11 @@ type DefaultMonitor struct {
 	Log
 
 	runner *Run
+
+	// This will be based on runner.Ctx, wrapping it with a cancel function
+	// that will be called at TearDown
+	ctx    context.Context
+	finish context.CancelFunc
 }
 
 // Result() error
@@ -89,6 +95,14 @@ func (d *DefaultMonitor) Report() error {
 // Monitor (log.New(io.Discard, "[M]", 0))
 func (m *DefaultMonitor) Execute() error {
 
+	var parentCtx context.Context
+	if m.runner == nil {
+		parentCtx = context.Background()
+	} else {
+		parentCtx = ContextOrDefault(m.runner.ctx)
+	}
+	m.ctx, m.finish = context.WithCancel(parentCtx)
+
 	// TODO Change this by a file destination?
 	nlog := log.New(io.Discard, "[M]", 0)
 	m.OrSetLogger(nlog)
@@ -100,7 +114,14 @@ func (m *DefaultMonitor) Execute() error {
 		interval = time.Second
 	}
 
+	// We create a new runner, disconnected from the test, so that monitor
+	// runs do not break the test
+	monitorRunner := &Run{}
+
 	for k, v := range m.Validators {
+		if v, ok := v.(RunDealer); ok {
+			v.SetRunner(monitorRunner, MonitorRunner)
+		}
 		OrSetLogger(v, nlog)
 		vc := ValidatorConfig{
 			Name:      k,
@@ -124,7 +145,7 @@ func (m *DefaultMonitor) Monitor(runner *Run) error {
 }
 
 func (m *DefaultMonitor) goMonitor(vc ValidatorConfig) {
-	ctx := m.runner.GetContext()
+	ctx := m.ctx
 
 	log.Printf("Starting Monitor %+v", vc)
 
@@ -156,6 +177,15 @@ func (m *DefaultMonitor) goMonitor(vc ValidatorConfig) {
 			case <-timeout:
 			}
 		}
+		log.Printf("Monitor finished: %#v", vc)
 	}()
 
+}
+
+func (m *DefaultMonitor) Teardown() Executor {
+	return &Procedure{
+		Fn: func() {
+			m.finish()
+		},
+	}
 }

@@ -93,17 +93,19 @@ func TestPingPong(t *testing.T) {
 
 	monitorPhase := frame2.Phase{
 		Runner: &r,
-		// This is Mainsteps, not setup, to ensure that the monitors are installed
-		// even if the setup step was skipped.  It's also out of the loop, so we
-		// install it only once
-		MainSteps: []frame2.Step{
+		// TODO there are two options here: put it on MainSteps or Setup.  On Setup,
+		// the monitor gets its AutoTearDown; on MainSteps, the monitor gets instaled
+		// even if the Setup was skipped.  As we do no have Setup skipping yet, let's
+		// use the AutoTearDown.
+		//
+		// It's also out of the loop, so we install it only once.
+		Setup: []frame2.Step{
 			{
 				// Our validations will run from the vertex node; before we
 				// start monitoring, let's make sure it looks good
 				Doc: "Validate Hello World deployment from vertex",
 				Validator: &deploy.HelloWorldValidate{
 					Namespace: vertex,
-					Runner:    &r,
 				},
 				ValidatorRetry: frame2.RetryOptions{
 					Ignore:     5,
@@ -118,7 +120,6 @@ func TestPingPong(t *testing.T) {
 				Modify: &frame2.DefaultMonitor{
 					Validators: map[string]frame2.Validator{
 						"hello-world": &deploy.HelloWorldValidate{
-							Runner:    &r,
 							Namespace: vertex,
 						},
 					},
@@ -327,7 +328,6 @@ func (m *MoveToLeft) Execute() error {
 
 	log.Printf("LF: %+v\nLB: %+v\nRF: %+v\nRB: %+v\nVX: %+v\n", m.LeftFront, m.LeftBack, m.RightFront, m.RightBack, m.Vertex)
 	validateHW := deploy.HelloWorldValidate{
-		Runner:    m.Runner,
 		Namespace: m.Vertex,
 	}
 	validateOpts := frame2.RetryOptions{

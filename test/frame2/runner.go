@@ -234,7 +234,8 @@ func (r *Run) Finalize() {
 			}
 		})
 	}
-	r.ReportChildren(0)
+	// TODO add some if debug
+	// r.ReportChildren(0)
 }
 
 // This will cause all active monitors to report their status on the logs.
@@ -417,10 +418,10 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 		}
 		duration := time.Now().Sub(start)
 		if err != nil {
-			Log.Printf("[R] %v not-ok %T (%v)", id, step.Modify, duration)
+			Log.Printf("[R] %v modify-not-ok %T (%v)", id, step.Modify, duration)
 			return fmt.Errorf("modify step failed: %w", err)
 		} else {
-			Log.Printf("[R] %v finished-ok %T (%v)", id, step.Modify, duration)
+			Log.Printf("[R] %v modify-ok %T (%v)", id, step.Modify, duration)
 		}
 	}
 
@@ -447,6 +448,7 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 	}
 
 	if len(validatorList) > 0 {
+		start := time.Now()
 		validatorRunner := stepRunner.ChildWithT(t, ValidatorRunner)
 		id := validatorRunner.GetId()
 		if step.ValidatorFinal {
@@ -485,6 +487,12 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 			Fn:      fn,
 			Options: step.ValidatorRetry,
 		}.Run()
+		elapsed := time.Now().Sub(start)
+		if err == nil {
+			Log.Printf("[R] %v validation-ok (%v)", id, elapsed)
+		} else {
+			Log.Printf("[R] %v validation-not-ok: %v (%v)", id, err, elapsed)
+		}
 		return err
 	}
 	return nil
@@ -669,7 +677,7 @@ func (p *Phase) run() error {
 					// - hold (show time left for the test)
 					// - kill (run no teardown)
 					// - finish (run teardowns; go to next test if available)
-					t.Errorf("test failed: %v", err)
+					t.Errorf("[R] %v test failed: %v", idPrefix, err)
 				}
 				// TODO this should be pluggable
 				//p.BaseRunner.DumpTestInfo(p.Name)
