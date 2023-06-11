@@ -15,7 +15,6 @@ import (
 
 // Deploys HelloWorld; frontend on pub1, backend on prv1
 type HelloWorld struct {
-	Runner   *frame2.Run
 	Topology *topology.Basic
 
 	// This will create K8S services
@@ -27,6 +26,8 @@ type HelloWorld struct {
 	//
 	// The Skupper service will use the HTTP protocol
 	SkupperExpose bool
+
+	frame2.DefaultRunDealer
 }
 
 // Deploys the hello-world-frontend pod on pub1 and hello-world-backend pod on
@@ -49,7 +50,6 @@ func (hw HelloWorld) Execute() error {
 			{
 				Doc: "Install Hello World frontend",
 				Modify: &HelloWorldFrontend{
-					Runner:         hw.Runner,
 					Target:         pub,
 					CreateServices: hw.CreateServices,
 					SkupperExpose:  hw.SkupperExpose,
@@ -57,7 +57,6 @@ func (hw HelloWorld) Execute() error {
 			}, {
 				Doc: "Install Hello World backend",
 				Modify: &HelloWorldBackend{
-					Runner:         hw.Runner,
 					Target:         prv,
 					CreateServices: hw.CreateServices,
 					SkupperExpose:  hw.SkupperExpose,
@@ -69,13 +68,13 @@ func (hw HelloWorld) Execute() error {
 }
 
 type HelloWorldBackend struct {
-	Runner         *frame2.Run
 	Target         *base.ClusterContext
 	CreateServices bool
 	SkupperExpose  bool
 	Protocol       string // This will default to http if not specified
 
 	Ctx context.Context
+	frame2.DefaultRunDealer
 }
 
 func (h *HelloWorldBackend) Execute() error {
@@ -149,13 +148,14 @@ func (h *HelloWorldBackend) Execute() error {
 }
 
 type HelloWorldFrontend struct {
-	Runner         *frame2.Run
 	Target         *base.ClusterContext
 	CreateServices bool
 	SkupperExpose  bool
 	Protocol       string // This will default to http if not specified
 
 	Ctx context.Context
+
+	frame2.DefaultRunDealer
 }
 
 func (h *HelloWorldFrontend) Execute() error {

@@ -288,6 +288,7 @@ func (t *TopologyBuild) Execute() error {
 
 		createAndInstall := frame2.Phase{
 			Runner: t.Runner,
+			Doc:    "Create namespaces and install Skupper",
 			Setup: []frame2.Step{
 				{
 					Modify: execute.TestRunnerCreateNamespace{
@@ -296,9 +297,8 @@ func (t *TopologyBuild) Execute() error {
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation,
 				}, {
-					Modify: execute.SkupperInstallSimple{
+					Modify: &execute.SkupperInstallSimple{
 						Namespace:     context,
-						Runner:        t.Runner,
 						EnableConsole: topoItem.EnableConsole,
 					},
 					SkipWhen: topoItem.SkipNamespaceCreation || topoItem.SkipSkupperDeploy,

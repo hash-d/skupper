@@ -35,7 +35,6 @@ func (hwd HelloWorldDefault) Execute() error {
 		MainSteps: []frame2.Step{
 			{
 				Modify: HelloWorld{
-					Runner:   hwd.Runner,
 					Topology: &topoSimplest,
 				},
 			},
@@ -66,10 +65,11 @@ type HelloWorldN struct {
 //
 // To use the auto tearDown, make sure to populate the Runner
 type HelloWorld struct {
-	Runner        *frame2.Run // Required for autoTeardown and step logging
 	Topology      *topology.Basic
 	AutoTearDown  bool
 	SkupperExpose bool
+
+	frame2.DefaultRunDealer
 }
 
 func (hw HelloWorld) Execute() error {
@@ -87,7 +87,6 @@ func (hw HelloWorld) Execute() error {
 				Modify: deploy.HelloWorld{
 					Topology:      hw.Topology,
 					SkupperExpose: hw.SkupperExpose,
-					Runner:        hw.Runner,
 				},
 			},
 		},

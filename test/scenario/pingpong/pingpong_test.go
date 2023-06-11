@@ -47,9 +47,12 @@ func TestPingPong(t *testing.T) {
 		T: t,
 	}
 	defer r.Report()
+	defer r.Finalize()
 	r.AllowDisruptors([]frame2.Disruptor{
 		&disruptors.NoHttp{},
 		&disruptors.DeploymentConfigBlindly{},
+		&disruptors.MixedVersionVan{},
+		&disruptors.UpgradeAndFinalize{},
 	})
 
 	var topologyV topology.Basic
@@ -64,8 +67,7 @@ func TestPingPong(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Doc: "Setup a HelloWorld environment",
-				Modify: environment.HelloWorld{
-					Runner:        &r,
+				Modify: &environment.HelloWorld{
 					Topology:      &topologyV,
 					AutoTearDown:  true,
 					SkupperExpose: true,
@@ -107,6 +109,7 @@ func TestPingPong(t *testing.T) {
 					KeepTrying: true,
 					Timeout:    time.Minute * 30,
 				},
+				ValidatorFinal: true,
 			}, {
 
 				Doc: "Installing hello-world monitors",
@@ -251,7 +254,6 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Frontend",
 							Modify: &deploy.HelloWorldFrontend{
-								Runner:        m.Runner,
 								Target:        m.RightFront,
 								SkupperExpose: true,
 							},
@@ -284,7 +286,6 @@ func (m *MoveToRight) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
-								Runner:        m.Runner,
 								Target:        m.RightBack,
 								SkupperExpose: true,
 							},
@@ -354,7 +355,6 @@ func (m *MoveToLeft) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Frontend",
 							Modify: &deploy.HelloWorldFrontend{
-								Runner:        m.Runner,
 								Target:        m.LeftFront,
 								SkupperExpose: true,
 							},
@@ -387,7 +387,6 @@ func (m *MoveToLeft) Execute() error {
 						{
 							Doc: "Deploy new HelloWorld Backend",
 							Modify: &deploy.HelloWorldBackend{
-								Runner:        m.Runner,
 								Target:        m.LeftBack,
 								SkupperExpose: true,
 							},

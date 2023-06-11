@@ -59,7 +59,6 @@ func (si SkupperInstall) Execute() error {
 					MaxWait:    wait,
 					SkipWait:   si.SkipStatus,
 					SkipStatus: si.SkipStatus,
-					Runner:     si.Runner,
 					Ctx:        ctx,
 				},
 			},
@@ -75,8 +74,9 @@ func (si SkupperInstall) Execute() error {
 // SkupperInstall, instead.
 type SkupperInstallSimple struct {
 	Namespace     *base.ClusterContext
-	Runner        *frame2.Run
 	EnableConsole bool
+
+	frame2.DefaultRunDealer
 }
 
 func (sis SkupperInstallSimple) Execute() error {
@@ -101,8 +101,7 @@ func (sis SkupperInstallSimple) Execute() error {
 				//		Router:            constants.DefaultRouterOptions(nil),
 				//	},
 				//},
-				Modify: CliSkupperInstall{
-					Runner:              sis.Runner,
+				Modify: &CliSkupperInstall{
 					Namespace:           sis.Namespace,
 					EnableConsole:       sis.EnableConsole,
 					EnableFlowCollector: sis.EnableConsole,
@@ -122,7 +121,8 @@ type CliSkupperInstall struct {
 	SkipStatus          bool
 	EnableConsole       bool
 	EnableFlowCollector bool
-	Runner              *frame2.Run
+
+	frame2.DefaultRunDealer
 }
 
 // Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
@@ -155,7 +155,6 @@ func (s CliSkupperInstall) Execute() error {
 					MaxWait:    s.MaxWait,
 					SkipWait:   s.SkipStatus,
 					SkipStatus: s.SkipStatus,
-					Runner:     s.Runner,
 					Ctx:        s.Ctx,
 				},
 			},
@@ -171,8 +170,8 @@ type ValidateSkupperAvailable struct {
 	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
 	SkipWait   bool
 	SkipStatus bool
-	Runner     *frame2.Run
 
+	frame2.DefaultRunDealer
 	frame2.Log
 }
 
