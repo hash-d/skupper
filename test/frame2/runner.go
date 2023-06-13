@@ -458,6 +458,7 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 			someFailure := false
 			someSuccess := false
 			var lastErr error
+			var lastErrValidator Validator
 			for i, v := range validatorList {
 				Log.Printf("[R] %v.v%d Validator %T", id, i, v)
 				// TODO: create and set individual runners for each validator?
@@ -467,6 +468,7 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 				} else {
 					someFailure = true
 					lastErr = err
+					lastErrValidator = v
 					Log.Printf("[R] %v.v%d Validator %T failed: %v", id, i, v, err)
 					if step.ExpectError {
 						Log.Printf("[R] (error expected)")
@@ -478,7 +480,7 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 				return fmt.Errorf("error expected, but at least one validator passed")
 			}
 			if !step.ExpectError && someFailure {
-				return fmt.Errorf("at least one validator failed.  last error: %w", lastErr)
+				return fmt.Errorf("at least one validator failed.  last error (on %T): %w", lastErrValidator, lastErr)
 			}
 			return nil
 		}

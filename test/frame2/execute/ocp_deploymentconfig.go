@@ -23,11 +23,12 @@ type OCPDeploymentConfigOpts struct {
 	Namespace      *base.ClusterContext
 	DeploymentOpts k8s.DeploymentOpts
 	Wait           time.Duration // Waits for the deployment to be ready.  Otherwise, returns as soon as the create instruction has been issued.  If the wait lapses, return an error.
-	Runner         *frame2.Run
 
 	Ctx context.Context
 
 	Result *osappsv1.DeploymentConfig
+
+	frame2.DefaultRunDealer
 }
 
 //          Image         string
@@ -82,7 +83,11 @@ func (d *OCPDeploymentConfigOpts) Execute() error {
 	}
 
 	deploymentconfig := &osappsv1.DeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: d.Name,
+		},
 		Spec: osappsv1.DeploymentConfigSpec{
+
 			Selector: d.DeploymentOpts.Labels,
 			Template: &v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -96,6 +101,7 @@ func (d *OCPDeploymentConfigOpts) Execute() error {
 					RestartPolicy: d.DeploymentOpts.RestartPolicy,
 				},
 			},
+			Replicas: 1,
 		},
 	}
 
@@ -129,7 +135,6 @@ func (d *OCPDeploymentConfigOpts) Execute() error {
 			MainSteps: []frame2.Step{
 				{
 					Validator: &OCPDeploymentConfigGet{
-						Runner:    d.Runner,
 						Namespace: d.Namespace,
 						Name:      d.Name,
 					},
@@ -179,7 +184,6 @@ func (d *OCPDeploymentConfig) Execute() error {
 }
 
 type OCPDeploymentConfigGet struct {
-	Runner    *frame2.Run
 	Namespace *base.ClusterContext
 	Name      string
 	Ctx       context.Context
@@ -187,6 +191,7 @@ type OCPDeploymentConfigGet struct {
 	Result *osappsv1.DeploymentConfig
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (d *OCPDeploymentConfigGet) Validate() error {
@@ -205,7 +210,7 @@ func (d *OCPDeploymentConfigGet) Validate() error {
 
 	// TODO Change his by d.MinReplicas?
 	if d.Result.Status.ReadyReplicas < 1 {
-		return fmt.Errorf("Deployment %q has no ready replicas", d.Name)
+		return fmt.Errorf("DeploymentConfig %q has no ready replicas", d.Name)
 	}
 
 	return nil

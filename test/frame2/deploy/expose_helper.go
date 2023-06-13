@@ -14,7 +14,6 @@ import (
 // As its name implies, it's just a helper.  Several 'deploy' pieces would repeat
 // this code, so it's been extracted for reuse
 type ExposeHelper struct {
-	Runner *frame2.Run
 	Target *base.ClusterContext
 
 	// This will create K8S services
@@ -33,6 +32,8 @@ type ExposeHelper struct {
 	ServiceType   apiv1.ServiceType
 
 	Protocol string
+
+	frame2.DefaultRunDealer
 
 	//Ctx context.Context
 }

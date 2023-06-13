@@ -21,7 +21,6 @@ import (
 //
 // https://github.com/skupperproject/skupper-example-patient-portal/
 type PatientPortal struct {
-	Runner   *frame2.Run
 	Topology *topology.Basic
 
 	// This will create K8S services
@@ -33,6 +32,8 @@ type PatientPortal struct {
 	//
 	// The Skupper service will use the HTTP protocol
 	SkupperExpose bool
+
+	frame2.DefaultRunDealer
 }
 
 func (p PatientPortal) Execute() error {
@@ -63,7 +64,6 @@ func (p PatientPortal) Execute() error {
 			{
 				Doc: "Install Patient Portal database",
 				Modify: &PatientDatabase{
-					Runner:         p.Runner,
 					Target:         db_ns,
 					CreateServices: p.CreateServices,
 					SkupperExpose:  p.SkupperExpose,
@@ -95,7 +95,6 @@ func (p PatientPortal) Execute() error {
 //
 // quay.io/skupper/patient-portal-database
 type PatientDatabase struct {
-	Runner *frame2.Run
 	Target *base.ClusterContext
 
 	Image string // default quay.io/skupper/patient-portal-database
@@ -111,6 +110,8 @@ type PatientDatabase struct {
 	SkupperExpose bool
 
 	Ctx context.Context
+
+	frame2.DefaultRunDealer
 }
 
 func (p PatientDatabase) Execute() error {
@@ -118,7 +119,7 @@ func (p PatientDatabase) Execute() error {
 
 	image := p.Image
 	if image == "" {
-		image = "quay.io/skupper/patient-portal-database"
+		image = "quay.io/dhashimo/patient-portal-database"
 	}
 
 	labels := map[string]string{"app": "patient-portal-database"}
@@ -141,8 +142,7 @@ func (p PatientDatabase) Execute() error {
 				},
 			}, {
 				Doc: "Creating services, as required",
-				Modify: ExposeHelper{
-					Runner:         p.Runner,
+				Modify: &ExposeHelper{
 					Target:         p.Target,
 					CreateServices: p.CreateServices,
 					SkupperExpose:  p.SkupperExpose,
@@ -182,7 +182,7 @@ func (p PatientPayment) Execute() error {
 
 	image := p.Image
 	if image == "" {
-		image = "quay.io/skupper/patient-portal-payment-processor"
+		image = "quay.io/dhashimo/patient-portal-payment-processor"
 	}
 
 	labels := map[string]string{"app": "patient-portal-payment"}
@@ -205,8 +205,7 @@ func (p PatientPayment) Execute() error {
 				},
 			}, {
 				Doc: "Creating services, as required",
-				Modify: ExposeHelper{
-					Runner:         p.Runner,
+				Modify: &ExposeHelper{
 					Target:         p.Target,
 					CreateServices: p.CreateServices,
 					SkupperExpose:  p.SkupperExpose,
@@ -246,7 +245,7 @@ func (p PatientFrontend) Execute() error {
 
 	image := p.Image
 	if image == "" {
-		image = "quay.io/skupper/patient-portal-frontend"
+		image = "quay.io/dhashimo/patient-portal-frontend"
 	}
 
 	labels := map[string]string{"app": "frontend"}
@@ -284,8 +283,7 @@ func (p PatientFrontend) Execute() error {
 				},
 			}, {
 				Doc: "Creating services, as required",
-				Modify: ExposeHelper{
-					Runner:         p.Runner,
+				Modify: &ExposeHelper{
 					Target:         p.Target,
 					CreateServices: true,
 					SkupperExpose:  false,
@@ -302,13 +300,13 @@ func (p PatientFrontend) Execute() error {
 }
 
 type PatientValidatePayment struct {
-	Runner      *frame2.Run
 	Namespace   *base.ClusterContext
 	ServiceName string // default is payment-processor
 	ServicePort int    // default is 8080
 	ServicePath string // default is api/pay
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (p PatientValidatePayment) Validate() error {
@@ -345,13 +343,13 @@ func (p PatientValidatePayment) Validate() error {
 }
 
 type PatientFrontendHealth struct {
-	Runner      *frame2.Run
 	Namespace   *base.ClusterContext
 	ServiceName string // default is frontend
 	ServicePort int    // default is 8080
 	ServicePath string // default is api/health
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (p PatientFrontendHealth) Validate() error {
@@ -391,15 +389,16 @@ func (p PatientFrontendHealth) Validate() error {
 // DB from that deployment using pg_isready
 // TODO change this to use a test helper pod, instead of the frontend
 type PatientDbPing struct {
-	Runner    *frame2.Run
 	Namespace *base.ClusterContext
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
-func (p *PatientDbPing) Validate() error {
+func (p PatientDbPing) Validate() error {
 	phase := frame2.Phase{
 		Runner: p.Runner,
+		Log:    p.Log,
 		MainSteps: []frame2.Step{
 			{
 				Validator: &execute.PostgresPing{
@@ -407,6 +406,8 @@ func (p *PatientDbPing) Validate() error {
 					Labels:    map[string]string{"app": "frontend"},
 					DbName:    "database",
 					DbHost:    "database",
+					Username:  "patient_portal",
+					Log:       p.Log,
 				},
 			},
 		},

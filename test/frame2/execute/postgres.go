@@ -14,16 +14,18 @@ type PostgresPing struct {
 	Labels    map[string]string
 	Container string
 
-	DbName string
-	DbHost string
-	DbPort string // default is 5432
+	DbName   string
+	DbHost   string
+	DbPort   string // default is 5432
+	Username string
 
 	Ctx context.Context
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
-func (p PostgresPing) Validate() error {
+func (p *PostgresPing) Validate() error {
 
 	port := p.DbPort
 	if port == "" {
@@ -36,16 +38,27 @@ func (p PostgresPing) Validate() error {
 		fmt.Sprintf("--host=%v", p.DbHost),
 		fmt.Sprintf("--port=%v", port),
 	}
-
-	pod_e := K8SPodExecute{
-		Pod: &K8SPodGet{
-			Namespace: p.Namespace,
-			Labels:    p.Labels,
-		},
-		Container: p.Container,
-		Command:   command,
-		Ctx:       p.Ctx,
+	if p.Username != "" {
+		command = append(command, fmt.Sprintf("--username=%v", p.Username))
 	}
-	return pod_e.Execute()
+
+	phase := frame2.Phase{
+		Runner: p.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Validator: &K8SPodExecute{
+					Pod: &K8SPodGet{
+						Namespace: p.Namespace,
+						Labels:    p.Labels,
+					},
+					Container: p.Container,
+					Command:   command,
+					Ctx:       p.Ctx,
+				},
+			},
+		},
+	}
+
+	return phase.Run()
 
 }

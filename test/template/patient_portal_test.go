@@ -26,6 +26,9 @@ func TestPatientPortalTemplate(t *testing.T) {
 		[]frame2.Disruptor{
 			&disruptors.UpgradeAndFinalize{},
 			&disruptors.MixedVersionVan{},
+			&disruptors.DeploymentConfigBlindly{},
+			&disruptors.NoConsole{},
+			&disruptors.NoFlowCollector{},
 		},
 	)
 
@@ -62,7 +65,12 @@ func TestPatientPortalTemplate(t *testing.T) {
 				Modify: &frame2.DefaultMonitor{
 					Validators: map[string]frame2.Validator{
 						"frontend-health": &deploy.PatientFrontendHealth{
-							Runner:    r,
+							Namespace: front_ns,
+						},
+						"database-ping": &deploy.PatientDbPing{
+							Namespace: front_ns,
+						},
+						"payment-token": &deploy.PatientValidatePayment{
 							Namespace: front_ns,
 						},
 					},
@@ -80,15 +88,12 @@ func TestPatientPortalTemplate(t *testing.T) {
 			{
 				Validators: []frame2.Validator{
 					&deploy.PatientValidatePayment{
-						Runner:    r,
 						Namespace: front_ns,
 					},
 					&deploy.PatientFrontendHealth{
-						Runner:    r,
 						Namespace: front_ns,
 					},
 					&deploy.PatientDbPing{
-						Runner:    r,
 						Namespace: front_ns,
 					},
 				},

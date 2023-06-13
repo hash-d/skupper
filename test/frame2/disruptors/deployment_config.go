@@ -73,6 +73,17 @@ func (d DeploymentConfigBlindly) Inspect(step *frame2.Step, phase *frame2.Phase)
 			DeploymentConfig: deploymentconfig,
 			Ctx:              mod.Ctx,
 		}
+	case *execute.K8SDeploymentOpts:
+		log.Printf("[D] DEPLOYMENT_CONFIGS_BLINDLY overriding K8SDeploymentOpts %q", mod.Name)
+		newMod := execute.OCPDeploymentConfigOpts{
+			Name:             mod.Name,
+			Namespace:        mod.Namespace,
+			DeploymentOpts:   mod.DeploymentOpts,
+			Wait:             mod.Wait,
+			Ctx:              mod.Ctx,
+			DefaultRunDealer: mod.DefaultRunDealer,
+		}
+		step.Modify = &newMod
 	case *execute.SkupperExpose:
 		if mod.Type == "deployment" {
 			log.Printf("[D] DEPLOYMENTCONFIG_BLINDLY overriding SkupperExpose for %q as 'deploymentconfig'", mod.Name)
@@ -91,6 +102,14 @@ func (d DeploymentConfigBlindly) Inspect(step *frame2.Step, phase *frame2.Phase)
 		case execute.K8SDeploymentWait:
 			transformed := execute.OCPDeploymentConfigWait(val)
 			return transformed, true
+		case *execute.K8SDeploymentGet:
+			transformed := execute.OCPDeploymentConfigGet{
+				Namespace:        val.Namespace,
+				Name:             val.Name,
+				Ctx:              val.Ctx,
+				DefaultRunDealer: val.DefaultRunDealer,
+			}
+			return &transformed, true
 		}
 		return nil, false
 	}

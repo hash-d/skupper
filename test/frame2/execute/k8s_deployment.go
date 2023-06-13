@@ -23,11 +23,12 @@ type K8SDeploymentOpts struct {
 	Namespace      *base.ClusterContext
 	DeploymentOpts k8s.DeploymentOpts
 	Wait           time.Duration // Waits for the deployment to be ready.  Otherwise, returns as soon as the create instruction has been issued.  If the wait lapses, return an error.
-	Runner         *frame2.Run
 
 	Ctx context.Context
 
 	Result *appsv1.Deployment
+
+	frame2.DefaultRunDealer
 }
 
 func (d *K8SDeploymentOpts) Execute() error {
@@ -57,11 +58,14 @@ func (d *K8SDeploymentOpts) Execute() error {
 			MainSteps: []frame2.Step{
 				{
 					Validator: &K8SDeploymentGet{
-						Runner:    d.Runner,
 						Namespace: d.Namespace,
 						Name:      d.Name,
 					},
 					ValidatorRetry: frame2.RetryOptions{
+						// The pod can get started and die a few seconds later.
+						// Here, we ensure it lived for a minimal time.
+						// TODO make this configurable
+						Ensure:     10,
 						Ctx:        ctx,
 						KeepTrying: true,
 					},
@@ -86,6 +90,8 @@ type K8SDeployment struct {
 
 	Result *appsv1.Deployment
 	Ctx    context.Context
+
+	frame2.DefaultRunDealer
 }
 
 func (d *K8SDeployment) Execute() error {
@@ -101,7 +107,6 @@ func (d *K8SDeployment) Execute() error {
 }
 
 type K8SDeploymentGet struct {
-	Runner    *frame2.Run
 	Namespace *base.ClusterContext
 	Name      string
 	Ctx       context.Context
@@ -109,6 +114,7 @@ type K8SDeploymentGet struct {
 	Result *appsv1.Deployment
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (kdg *K8SDeploymentGet) Validate() error {

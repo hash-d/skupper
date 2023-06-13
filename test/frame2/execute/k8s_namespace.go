@@ -43,6 +43,7 @@ type TestRunnerDeleteNamespace struct {
 }
 
 func (trdn TestRunnerDeleteNamespace) Execute() error {
+	log.Printf("Removing namespace %q", trdn.Namespace.Namespace)
 	err := trdn.Namespace.DeleteNamespace()
 	if err != nil {
 		return fmt.Errorf(

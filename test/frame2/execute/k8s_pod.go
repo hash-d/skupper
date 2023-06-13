@@ -17,7 +17,6 @@ import (
 // Otherwise, the pods with the given label will be listed, and the first
 // in the list will be returned
 type K8SPodGet struct {
-	Runner    *frame2.Run
 	Namespace *base.ClusterContext
 	Name      string
 	Labels    map[string]string
@@ -26,6 +25,7 @@ type K8SPodGet struct {
 	Result *corev1.Pod
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (g *K8SPodGet) Execute() error {
@@ -56,7 +56,7 @@ func (g *K8SPodGet) Execute() error {
 		return fmt.Errorf("failed to get pod list by labels: %w", err)
 	}
 	if len(podList.Items) != 1 {
-		return fmt.Errorf("failed to get pod by labels: %w", err)
+		return fmt.Errorf("failed to get pod by labels")
 	}
 	g.Result = &podList.Items[0]
 
@@ -118,4 +118,8 @@ func (e *K8SPodExecute) Execute() error {
 	}
 
 	return nil
+}
+
+func (e *K8SPodExecute) Validate() error {
+	return e.Execute()
 }
