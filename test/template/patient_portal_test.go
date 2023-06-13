@@ -29,6 +29,7 @@ func TestPatientPortalTemplate(t *testing.T) {
 			&disruptors.DeploymentConfigBlindly{},
 			&disruptors.NoConsole{},
 			&disruptors.NoFlowCollector{},
+			&disruptors.NoHttp{},
 		},
 	)
 
