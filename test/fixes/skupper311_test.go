@@ -38,7 +38,6 @@ func Test311(t *testing.T) {
 			{
 				Modify: environment.HelloWorld{
 					Topology:     &topologyN,
-					Runner:       f2runner,
 					AutoTearDown: true,
 				},
 			},

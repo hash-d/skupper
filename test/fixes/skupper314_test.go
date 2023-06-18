@@ -36,7 +36,6 @@ func TestSkupper314(t *testing.T) {
 		Setup: []frame2.Step{
 			{
 				Modify: environment.HelloWorld{
-					Runner:       &f2runner,
 					Topology:     &topo,
 					AutoTearDown: true,
 				},

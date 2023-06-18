@@ -59,7 +59,6 @@ func TestIssue832(t *testing.T) {
 	phase1.Run()
 
 	topo := &topology.TopologyBuild{
-		Runner:       runner,
 		Topology:     &topoSimplest,
 		AutoTearDown: true,
 	}
@@ -99,8 +98,7 @@ func TestIssue832(t *testing.T) {
 							Args:          []string{"infinity"},
 							RestartPolicy: core.RestartPolicyAlways,
 						},
-						Wait:   2 * time.Minute,
-						Runner: runner,
+						Wait: 2 * time.Minute,
 					},
 				},
 			},
@@ -213,7 +211,6 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Expose the stateful set; expect the name to not be available for at least 60s",
 				Modify: execute.SkupperExpose{
-					Runner:                 runner,
 					Namespace:              prv1,
 					Name:                   "backend",
 					Type:                   "statefulset",
@@ -365,7 +362,6 @@ func TestIssue832(t *testing.T) {
 			}, {
 				Doc: "Expose the stateful set via Skupper; expect the names to be almost immediatelly available",
 				Modify: execute.SkupperExpose{
-					Runner:                 runner,
 					Namespace:              prv1,
 					Name:                   "backend",
 					Type:                   "statefulset",
