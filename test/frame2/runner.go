@@ -449,8 +449,29 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 
 	if len(validatorList) > 0 {
 		start := time.Now()
+		/*
+			 * TODO TODO TODO
+			 *
+			 * This change is required, but currently it breaks the tests.  To implement
+			 * it, val.SetRunner must nil-ify the new runner's T.  This way, failures running
+			 * something within the validator will not necessarily cause T.Fail when that
+			 * runner is run.  Instead, that thing needs to cause the actual validator to
+			 * fail, which causes the higher-level Runner to T.Fail().  This way, only subtest
+			 * Runners should have T.  Other code needs changed on that, though, to use a
+			 * Runner.getT() instead of simply Runner.T, which will bubble up on the tree
+			 * until it finds the T on an ancestor.
+			 *
+			for _, v := range validatorList {
+				if val, ok := v.(RunDealer); ok {
+					val.SetRunner(stepRunner, ValidatorRunner)
+				}
+			}
+			* TODO TODO TODO
+		*/
+
+		// This is a generic Runner, if the validtor is not a RunDealer
+		// TODO remove this once all actions are RunDealers
 		validatorRunner := stepRunner.ChildWithT(t, ValidatorRunner)
-		id := validatorRunner.GetId()
 		if step.ValidatorFinal {
 			p.savedRunner.addFinalValidators(validatorList)
 		}
@@ -460,6 +481,17 @@ func processStep_(t *testing.T, step Step, kind RunnerType, Log FrameLogger, p *
 			var lastErr error
 			var lastErrValidator Validator
 			for i, v := range validatorList {
+				var id string
+				if v, ok := v.(RunDealer); ok {
+					id = v.GetRunner().GetId()
+				} else {
+					id = validatorRunner.GetId()
+				}
+
+				// TODO remove this once the SetRunner thing is fixed above
+				//      (see the TODO TODO TODO line)
+				id = validatorRunner.GetId()
+
 				Log.Printf("[R] %v.v%d Validator %T", id, i, v)
 				// TODO: create and set individual runners for each validator?
 				err := v.Validate()

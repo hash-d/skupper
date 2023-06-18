@@ -19,7 +19,8 @@ type SkupperInstall struct {
 	MaxWait    time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
 	SkipWait   bool
 	SkipStatus bool
-	Runner     *frame2.Run
+
+	frame2.DefaultRunDealer
 }
 
 // Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
@@ -214,8 +215,8 @@ func (v ValidateSkupperAvailable) Validate() error {
 				SkipWhen: v.SkipWait,
 			}, {
 				Modify: &CliSkupper{
-					Args:      []string{"version"},
-					Namespace: v.Namespace.Namespace,
+					Args:           []string{"version"},
+					ClusterContext: v.Namespace,
 					Cmd: Cmd{
 						ForceOutput: true,
 					},
@@ -223,8 +224,8 @@ func (v ValidateSkupperAvailable) Validate() error {
 				SkipWhen: v.SkipStatus,
 			}, {
 				Modify: &CliSkupper{
-					Args:      []string{"status"},
-					Namespace: v.Namespace.Namespace,
+					Args:           []string{"status"},
+					ClusterContext: v.Namespace,
 					Cmd: Cmd{
 						ForceOutput: true,
 					},

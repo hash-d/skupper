@@ -34,6 +34,7 @@ type Container struct {
 
 	Return *v1.Container
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (c Container) Validate() error {

@@ -274,12 +274,12 @@ func (h HelloWorldValidate) Validate() error {
 }
 
 type HelloWorldValidateFront struct {
-	Runner      *frame2.Run
 	Namespace   *base.ClusterContext
 	ServiceName string // default is hello-world-frontend
 	ServicePort int    // default is 8080
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (h HelloWorldValidateFront) Validate() error {
@@ -312,13 +312,13 @@ func (h HelloWorldValidateFront) Validate() error {
 }
 
 type HelloWorldValidateBack struct {
-	Runner      *frame2.Run
 	Namespace   *base.ClusterContext
 	ServiceName string // default is hello-world-backend
 	ServicePort int    // default is 8080
 	ServicePath string // default is api/hello
 
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (h HelloWorldValidateBack) Validate() error {
