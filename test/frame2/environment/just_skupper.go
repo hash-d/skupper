@@ -7,7 +7,7 @@ import (
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
-// A Hello World deployment on pub1 (frontend) and prv1 (backend),
+// A Skupper deployment on pub1 (frontend) and prv1 (backend),
 // on the default topology
 type JustSkupperDefault struct {
 	Name         string
@@ -40,7 +40,7 @@ func (j *JustSkupperDefault) Execute() error {
 		Runner: j.Runner,
 		MainSteps: []frame2.Step{
 			{
-				Modify: JustSkupper{
+				Modify: &JustSkupper{
 					Topology:     &j.Topo,
 					AutoTearDown: j.AutoTearDown,
 				},
@@ -51,7 +51,7 @@ func (j *JustSkupperDefault) Execute() error {
 	return execute.Run()
 }
 
-// A Hello World deployment on pub1 (frontend) and prv1 (backend),
+// A Skupper deployment on pub1 (frontend) and prv1 (backend),
 // on an N topology.
 //
 // Useful for the simplest multiple link testing.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/skupperproject/skupper/test/frame2"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
 
@@ -24,6 +25,13 @@ type CliSkupper struct {
 	Cmd Cmd
 
 	path string
+
+	frame2.DefaultRunDealer
+	frame2.Log
+}
+
+func (c *CliSkupper) Validate() error {
+	return c.Execute()
 }
 
 func (cs *CliSkupper) Execute() error {
@@ -60,6 +68,7 @@ func (cs *CliSkupper) Execute() error {
 	return nil
 }
 
-func (c *CliSkupper) SetSkupperCliPath(path string) {
+func (c *CliSkupper) SetSkupperCliPath(path string, env []string) {
 	c.path = path
+	c.Cmd.AdditionalEnv = env
 }

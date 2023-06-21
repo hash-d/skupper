@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -59,6 +60,11 @@ type Cmd struct {
 	FailReturn    []int         // Fail on any of these return status.  Default anything other than 0
 	ForceOutput   bool          // Shows this command's output on log, regardless of environment config
 	ForceNoOutput bool          // No output, regardless of environment config.  Takes precedence over the above
+
+	// Variables to be added or overwritten on the environment.  The entries should be in
+	// the form key=value.  When this is non-null, it will be added to the result of os.Environ
+	// and used on exec.Cmd (where the last entry of a key takes precedence)
+	AdditionalEnv []string
 
 	frame2.Log
 
@@ -155,6 +161,18 @@ func (c *Cmd) Execute() error {
 	// mergo will not merge Args, so we have to force it
 	cmd.Args = tmpcmd.Args
 
+	// Append AdditionalEnv, if set.  If unset, leave cmd.Env alone
+	if c.AdditionalEnv != nil {
+		var newEnv []string
+		if cmd.Env == nil {
+			newEnv = os.Environ()
+		} else {
+			newEnv = cmd.Env
+		}
+		newEnv = append(newEnv, c.AdditionalEnv...)
+		cmd.Env = newEnv
+	}
+
 	// TODO: if the user suplied their own stdout/stderr, use that, do not reset
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
@@ -163,6 +181,12 @@ func (c *Cmd) Execute() error {
 
 	// Running the skupper command
 	log.Printf("f2.execute.Cmd running: %s %s\n", c.Command, strings.Join(c.Args, " "))
+	if c.AdditionalEnv != nil {
+		log.Printf("Additional environment:")
+		for _, v := range c.AdditionalEnv {
+			log.Printf(" - %s", v)
+		}
+	}
 	cmdErr := cmd.Run()
 
 	c.CmdResult.Stdout = stdout.String()

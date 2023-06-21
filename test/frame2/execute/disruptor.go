@@ -12,5 +12,5 @@ type SkupperUpgradable interface {
 }
 
 type SkupperCliPathSetter interface {
-	SetSkupperCliPath(path string)
+	SetSkupperCliPath(path string, env []string)
 }

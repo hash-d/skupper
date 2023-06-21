@@ -50,6 +50,20 @@ func (s Step) IsVerbose() bool {
 	return s.Verbose || os.Getenv(EnvFrame2Verbose) != ""
 }
 
+// Returns a list where Step.Validator is the first item, followed by
+// Step.Validators
+func (s Step) GetValidators() []Validator {
+	validators := []Validator{}
+
+	if s.Validator != nil {
+		validators = append(validators, s.Validator)
+	}
+
+	validators = append(validators, s.Validators...)
+
+	return validators
+}
+
 // type Validate struct {
 // 	Validator
 // 	// Every Validator runs inside a Retry.  If no options are given,

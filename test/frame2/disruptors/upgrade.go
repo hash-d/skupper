@@ -167,15 +167,43 @@ func (u *UpgradeAndFinalize) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	if step, ok := step.Modify.(execute.SkupperUpgradable); ok {
 		u.targets = append(u.targets, step.SkupperUpgradable())
 	}
-	if step, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
+	if action, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
 		if !u.useNew {
-			path := os.Getenv("SKUPPER_TEST_OLD_BIN")
-			if path == "" {
-				panic("Disruptor UPGRADE_AND_FINALIZE requested, but no SKUPPER_TEST_OLD_BIN config")
-			}
-			step.SetSkupperCliPath(path)
+			log.Printf("UpgradeAndFinalize disruptor updating %T %+v", action, action)
+			setCliPathEnv(action)
 		}
 	}
+}
+
+// Sets the path to the Skupper executable on this action to the one set on
+// SKUPPER_TEST_OLD_BIN, and sets the execution environment to add or overwrite
+// any Skupper IMAGE variables with their SKUPPER_TEST_OLD settings
+func setCliPathEnv(action execute.SkupperCliPathSetter) {
+	path := os.Getenv(frame2.ENV_OLD_BIN)
+	if path == "" {
+		panic("Upgrade disruptor requested, but no SKUPPER_TEST_OLD_BIN config")
+	}
+
+	// For those SKUPPER_TEST_OLD image variables that are set, we change them
+	// on the environment for the called command
+	var env []string
+	for oldEnvKey, envKey := range frame2.EnvOldMap {
+		// Do not change to os.GetEnv: we want the ability to unset a variable
+		// for the old version
+		if image, ok := os.LookupEnv(oldEnvKey); ok {
+			env = append(env, fmt.Sprintf("%s=%s", envKey, image))
+		}
+
+	}
+
+	log.Printf(
+		"Action %+v updated with path %q and additional environment %+v",
+		action,
+		path,
+		env,
+	)
+
+	action.SetSkupperCliPath(path, env)
 }
 
 // Right after setup is complete, update part of the VAN, and
@@ -235,14 +263,10 @@ func (m *MixedVersionVan) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	if UpgradableStep, ok := step.Modify.(execute.SkupperUpgradable); ok {
 		m.targets = append(m.targets, UpgradableStep.SkupperUpgradable())
 	}
-	if PathSetStep, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
+	if pathSetAction, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
 		if !m.useNew {
-			path := os.Getenv("SKUPPER_TEST_OLD_BIN")
-			log.Printf("MixedVersionVan disruptor updating %+v to use %q", PathSetStep, path)
-			if path == "" {
-				panic("Disruptor UPGRADE_AND_FINALIZE requested, but no SKUPPER_TEST_OLD_BIN config")
-			}
-			PathSetStep.SetSkupperCliPath(path)
+			log.Printf("MixedVersionVan disruptor updating %T %+v", pathSetAction, pathSetAction)
+			setCliPathEnv(pathSetAction)
 		}
 	}
 }

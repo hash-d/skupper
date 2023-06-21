@@ -21,9 +21,8 @@ type Nslookup struct {
 
 	Cmd execute.Cmd
 
-	Runner *frame2.Run
-
 	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (n Nslookup) Validate() error {

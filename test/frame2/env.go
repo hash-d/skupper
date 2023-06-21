@@ -1,5 +1,7 @@
 package frame2
 
+import "github.com/skupperproject/skupper/pkg/images"
+
 // Frame2-specific environment variables
 
 const (
@@ -8,6 +10,11 @@ const (
 	// marked as final will be retried this many times at the end of the
 	// test.
 	ENV_FINAL_RETRY = "SKUPPER_TEST_FINAL_RETRY"
+)
+
+// TODO: Move all skupper-specific variables to a skupper-specific file, on a
+// skupper-specific package
+const (
 
 	// Define the upgrade strategy used by the Upgrade disruptor (possibly
 	// other points as well?)
@@ -36,4 +43,40 @@ const (
 	//
 	// Valid values are of the string type TestUpgradeStrategy
 	ENV_UPGRADE_STRATEGY = "SKUPPER_TEST_UPGRADE_STRATEGY"
+
+	ENV_OLD_BIN = "SKUPPER_TEST_OLD_BIN"
+
+	// All image env variables from pkg/images/image_utils.go should be here
+	EnvOldRouterImageEnvKey                 string = "SKUPPER_TEST_OLD_QDROUTERD_IMAGE"
+	EnvOldServiceControllerImageEnvKey      string = "SKUPPER_TEST_OLD_SKUPPER_SERVICE_CONTROLLER_IMAGE"
+	EnvOldConfigSyncImageEnvKey             string = "SKUPPER_TEST_OLD_SKUPPER_CONFIG_SYNC_IMAGE"
+	EnvOldFlowCollectorImageEnvKey          string = "SKUPPER_TEST_OLD_SKUPPER_FLOW_COLLECTOR_IMAGE"
+	EnvOldPrometheusServerImageEnvKey       string = "SKUPPER_TEST_OLD_PROMETHEUS_SERVER_IMAGE"
+	EnvOldRouterPullPolicyEnvKey            string = "SKUPPER_TEST_OLD_QDROUTERD_IMAGE_PULL_POLICY"
+	EnvOldServiceControllerPullPolicyEnvKey string = "SKUPPER_TEST_OLD_SKUPPER_SERVICE_CONTROLLER_IMAGE_PULL_POLICY"
+	EnvOldConfigSyncPullPolicyEnvKey        string = "SKUPPER_TEST_OLD_SKUPPER_CONFIG_SYNC_IMAGE_PULL_POLICY"
+	EnvOldFlowCollectorPullPolicyEnvKey     string = "SKUPPER_TEST_OLD_SKUPPER_FLOW_COLLECTOR_IMAGE_PULL_POLICY"
+	EnvOldPrometheusServerPullPolicyEnvKey  string = "SKUPPER_TEST_OLD_PROMETHEUS_SERVER_IMAGE_PULL_POLICY"
+	EnvOldSkupperImageRegistryEnvKey        string = "SKUPPER_TEST_OLD_SKUPPER_IMAGE_REGISTRY"
+	EnvOldPrometheusImageRegistryEnvKey     string = "SKUPPER_TEST_OLD_PROMETHEUS_IMAGE_REGISTRY"
 )
+
+// final
+//
+// The map between the variables that indicate the image value for the old version, and the
+// environment variable that actually needs to be set on the environment for that configuration
+// to be effective.  Perhaps it would be simpler to just s/SKUPPER_TEST_OLD//?
+var EnvOldMap = map[string]string{
+	EnvOldRouterImageEnvKey:                 images.RouterImageEnvKey,
+	EnvOldServiceControllerImageEnvKey:      images.ServiceControllerImageEnvKey,
+	EnvOldConfigSyncImageEnvKey:             images.ConfigSyncImageEnvKey,
+	EnvOldFlowCollectorImageEnvKey:          images.FlowCollectorImageEnvKey,
+	EnvOldPrometheusServerImageEnvKey:       images.PrometheusServerImageEnvKey,
+	EnvOldRouterPullPolicyEnvKey:            images.RouterPullPolicyEnvKey,
+	EnvOldServiceControllerPullPolicyEnvKey: images.ServiceControllerPullPolicyEnvKey,
+	EnvOldConfigSyncPullPolicyEnvKey:        images.ConfigSyncPullPolicyEnvKey,
+	EnvOldFlowCollectorPullPolicyEnvKey:     images.FlowCollectorPullPolicyEnvKey,
+	EnvOldPrometheusServerPullPolicyEnvKey:  images.PrometheusServerPullPolicyEnvKey,
+	EnvOldSkupperImageRegistryEnvKey:        images.SkupperImageRegistryEnvKey,
+	EnvOldPrometheusImageRegistryEnvKey:     images.PrometheusImageRegistryEnvKey,
+}

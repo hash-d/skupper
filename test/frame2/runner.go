@@ -291,7 +291,7 @@ outer:
 				continue outer
 			}
 		}
-		r.T.Skipf("This test does not support the disruptor %v", d)
+		r.T.Skipf("This test does not support the disruptor %q", d)
 	}
 
 	/* TODO This should replace the loop above; check for any AlwaysDisruptors

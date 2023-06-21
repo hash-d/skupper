@@ -35,6 +35,8 @@ type SkupperManifest struct {
 	// searched first on the test root, then on the source root.
 	Path string
 
+	SkipComparison bool
+
 	Expected SkupperManifestContent
 	Result   *SkupperManifestContent
 
@@ -70,6 +72,11 @@ func (m SkupperManifest) Validate() error {
 	err = json.Unmarshal(manifestBytes, m.Result)
 	if err != nil {
 		return fmt.Errorf("SkupperManifest: could not unmarshal %q: %w", manifestPath, err)
+	}
+
+	if m.SkipComparison {
+		m.Log.Printf("SkupperManifest>: Skipping comparison per configuration")
+		return nil
 	}
 
 	for _, expected := range m.Expected.Images {
