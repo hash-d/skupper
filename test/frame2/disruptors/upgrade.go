@@ -169,8 +169,15 @@ func (u *UpgradeAndFinalize) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	}
 	if action, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
 		if !u.useNew {
-			log.Printf("UpgradeAndFinalize disruptor updating %T %+v", action, action)
+			log.Printf("UpgradeAndFinalize disruptor updating path for %T %+v", action, action)
 			setCliPathEnv(action)
+		}
+	}
+	if action, ok := step.Modify.(execute.SkupperVersioner); ok {
+		if !u.useNew {
+			version := os.Getenv(frame2.ENV_OLD_VERSION)
+			log.Printf("UpgradeAndFinalize disruptor updating version to %q for %T %+v", version, action, action)
+			action.SetSkupperVersion(version)
 		}
 	}
 }
@@ -197,7 +204,7 @@ func setCliPathEnv(action execute.SkupperCliPathSetter) {
 	}
 
 	log.Printf(
-		"Action %+v updated with path %q and additional environment %+v",
+		"Action %T updated with path %q and additional environment %+v",
 		action,
 		path,
 		env,
@@ -265,8 +272,15 @@ func (m *MixedVersionVan) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	}
 	if pathSetAction, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
 		if !m.useNew {
-			log.Printf("MixedVersionVan disruptor updating %T %+v", pathSetAction, pathSetAction)
+			log.Printf("MixedVersionVan disruptor updating path on %T", pathSetAction)
 			setCliPathEnv(pathSetAction)
+		}
+	}
+	if action, ok := step.Modify.(execute.SkupperVersioner); ok {
+		if !m.useNew {
+			version := os.Getenv(frame2.ENV_OLD_VERSION)
+			log.Printf("MixedVersionVan disruptor updating version to %q for %T", version, action)
+			action.SetSkupperVersion(version)
 		}
 	}
 }

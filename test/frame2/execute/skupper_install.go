@@ -124,6 +124,7 @@ type CliSkupperInstall struct {
 	EnableFlowCollector bool
 
 	frame2.DefaultRunDealer
+	SkupperVersionerDefault
 }
 
 // Interface execute.SkupperUpgradable; allow this to be used with Upgrade disruptors
@@ -132,6 +133,55 @@ func (s CliSkupperInstall) SkupperUpgradable() *base.ClusterContext {
 }
 
 func (s CliSkupperInstall) Execute() error {
+	versions := []string{"1.2", "1.3"}
+	target := s.WhichSkupperVersion(versions)
+	var action frame2.Executor
+	switch target {
+	case "1.3", "":
+		action = &CliSkupperInstall_1_3{
+			Namespace:           s.Namespace,
+			Ctx:                 s.Ctx,
+			MaxWait:             s.MaxWait,
+			SkipWait:            s.SkipWait,
+			EnableConsole:       s.EnableConsole,
+			EnableFlowCollector: s.EnableFlowCollector,
+		}
+	case "1.2":
+		action = &CliSkupperInstall_1_2{
+			Namespace:     s.Namespace,
+			Ctx:           s.Ctx,
+			MaxWait:       s.MaxWait,
+			SkipWait:      s.SkipWait,
+			EnableConsole: !s.EnableConsole,
+		}
+	default:
+		panic("unnassigned version for CliSkupperInstall")
+	}
+	phase := frame2.Phase{
+		Runner: s.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: action,
+			},
+		},
+	}
+
+	return phase.Run()
+}
+
+type CliSkupperInstall_1_3 struct {
+	Namespace           *base.ClusterContext
+	Ctx                 context.Context
+	MaxWait             time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
+	SkipWait            bool
+	SkipStatus          bool
+	EnableConsole       bool
+	EnableFlowCollector bool
+
+	frame2.DefaultRunDealer
+}
+
+func (s CliSkupperInstall_1_3) Execute() error {
 
 	args := []string{"init"}
 
@@ -141,6 +191,47 @@ func (s CliSkupperInstall) Execute() error {
 
 	if s.EnableFlowCollector {
 		args = append(args, "--enable-flow-collector")
+	}
+
+	phase := frame2.Phase{
+		Runner: s.Runner,
+		MainSteps: []frame2.Step{
+			{
+				Modify: &CliSkupper{
+					Args:           args,
+					ClusterContext: s.Namespace,
+				},
+				Validator: &ValidateSkupperAvailable{
+					Namespace:  s.Namespace,
+					MaxWait:    s.MaxWait,
+					SkipWait:   s.SkipStatus,
+					SkipStatus: s.SkipStatus,
+					Ctx:        s.Ctx,
+				},
+			},
+		},
+	}
+
+	return phase.Run()
+}
+
+type CliSkupperInstall_1_2 struct {
+	Namespace     *base.ClusterContext
+	Ctx           context.Context
+	MaxWait       time.Duration // If not set, defaults to types.DefaultTimeoutDuration*2
+	SkipWait      bool
+	SkipStatus    bool
+	EnableConsole bool
+
+	frame2.DefaultRunDealer
+}
+
+func (s CliSkupperInstall_1_2) Execute() error {
+
+	args := []string{"init"}
+
+	if !s.EnableConsole {
+		args = append(args, "--enable-console=false")
 	}
 
 	phase := frame2.Phase{

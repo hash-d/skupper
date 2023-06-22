@@ -44,7 +44,11 @@ const (
 	// Valid values are of the string type TestUpgradeStrategy
 	ENV_UPGRADE_STRATEGY = "SKUPPER_TEST_UPGRADE_STRATEGY"
 
+	// A path to the Skupper binary to be used (the actual file, not just its parent directory)
 	ENV_OLD_BIN = "SKUPPER_TEST_OLD_BIN"
+
+	// The version that ENV_OLD_BIN refers to, such as 1.2 or 1.4.0-rc3
+	ENV_OLD_VERSION = "SKUPPER_TEST_OLD_VERSION"
 
 	// All image env variables from pkg/images/image_utils.go should be here
 	EnvOldRouterImageEnvKey                 string = "SKUPPER_TEST_OLD_QDROUTERD_IMAGE"
