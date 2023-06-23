@@ -30,6 +30,9 @@ func TestPatientPortalTemplate(t *testing.T) {
 			&disruptors.NoConsole{},
 			&disruptors.NoFlowCollector{},
 			&disruptors.NoHttp{},
+			&disruptors.ConsoleOnAll{},
+			&disruptors.FlowCollectorOnAll{},
+			&disruptors.MinAllows{},
 		},
 	)
 

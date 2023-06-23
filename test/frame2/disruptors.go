@@ -4,6 +4,10 @@ type Disruptor interface {
 	DisruptorEnvValue() string
 }
 
+type DisruptorConfigurer interface {
+	Configure(string) error
+}
+
 // This is just a marker to indicate that the disruptor does
 // not need to be listed on Run.AlwaysDisruptor on the test;
 // just having it on the environment will suffice for it to

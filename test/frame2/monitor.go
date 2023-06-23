@@ -172,6 +172,7 @@ func (m *DefaultMonitor) goMonitor(vc ValidatorConfig) {
 			err := vc.Validator.Validate()
 			end := time.Now()
 			elapsed := end.Sub(start)
+			// TODO: this needs sync.Lock, to avoid "fatal error: concurrent map writes"
 			m.Results[vc.Name] = append(m.Results[vc.Name], MonitorResult{
 				Timestamp: start,
 				Duration:  elapsed,

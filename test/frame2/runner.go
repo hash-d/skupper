@@ -284,9 +284,21 @@ func (r *Run) AllowDisruptors(list []Disruptor) {
 
 outer:
 	for _, d := range disruptor_list {
+		name, conf, _ := strings.Cut(d, ":")
 		for _, allowed := range list {
-			if d == allowed.DisruptorEnvValue() {
-				log.Printf("DISRUPTOR: %v", d)
+			if name == allowed.DisruptorEnvValue() {
+				log.Printf("DISRUPTOR: %v", name)
+				if conf != "" {
+					if allowed, ok := allowed.(DisruptorConfigurer); ok {
+						err := allowed.Configure(conf)
+						if err != nil {
+							panic(fmt.Sprintf("Failed configuration for %q: %v", name, err))
+						}
+					} else {
+						panic(fmt.Sprintf("Disruptor %q does not accept configuration", name))
+					}
+					log.Printf("Configured disruptor: %+v", allowed)
+				}
 				r.getRoot().disruptor = append(r.getRoot().disruptor, allowed)
 				continue outer
 			}

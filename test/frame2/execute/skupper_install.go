@@ -152,7 +152,7 @@ func (s CliSkupperInstall) Execute() error {
 			Ctx:           s.Ctx,
 			MaxWait:       s.MaxWait,
 			SkipWait:      s.SkipWait,
-			EnableConsole: !s.EnableConsole,
+			EnableConsole: s.EnableConsole,
 		}
 	default:
 		panic("unnassigned version for CliSkupperInstall")
@@ -230,9 +230,9 @@ func (s CliSkupperInstall_1_2) Execute() error {
 
 	args := []string{"init"}
 
-	if !s.EnableConsole {
-		args = append(args, "--enable-console=false")
-	}
+	// On 1.3 the default changed from --enable-console=true to --enable-console=false.
+	// For this reason, on 1.2 we need to always specify the console flag.
+	args = append(args, fmt.Sprintf("--enable-console=%t", s.EnableConsole))
 
 	phase := frame2.Phase{
 		Runner: s.Runner,
