@@ -1,12 +1,15 @@
 package execute
 
 import (
-	"log"
+	"github.com/skupperproject/skupper/test/frame2"
 )
 
 type Print struct {
 	Message string // if empty, will simply use "%#v"
 	Data    []interface{}
+
+	frame2.Log
+	frame2.DefaultRunDealer
 }
 
 func (p Print) Execute() error {
@@ -15,7 +18,11 @@ func (p Print) Execute() error {
 	if msg == "" {
 		msg = "%#v"
 	}
-	log.Printf(msg, p.Data...)
+	p.Log.Printf(msg, p.Data...)
 
 	return nil
+}
+
+func (p Print) Validate() error {
+	return p.Execute()
 }

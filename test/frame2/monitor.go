@@ -122,8 +122,8 @@ func (m *DefaultMonitor) Execute() error {
 	monitorRunner := &Run{}
 
 	for k, v := range m.Validators {
-		if v, ok := v.(RunDealer); ok {
-			v.SetRunner(monitorRunner, MonitorRunner)
+		if val, ok := v.(RunDealer); ok {
+			val.SetRunner(monitorRunner, MonitorRunner)
 		} else {
 			panic(fmt.Sprintf(
 				"Validator %T on %s is not a RunDealer, and cannot be used as a monitor",

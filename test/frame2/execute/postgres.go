@@ -44,6 +44,7 @@ func (p *PostgresPing) Validate() error {
 
 	phase := frame2.Phase{
 		Runner: p.Runner,
+		Log:    p.Log,
 		MainSteps: []frame2.Step{
 			{
 				Validator: &K8SPodExecute{
@@ -54,6 +55,7 @@ func (p *PostgresPing) Validate() error {
 					Container: p.Container,
 					Command:   command,
 					Ctx:       p.Ctx,
+					Log:       p.Log,
 				},
 			},
 		},

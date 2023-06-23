@@ -399,6 +399,7 @@ func (p PatientDbPing) Validate() error {
 	phase := frame2.Phase{
 		Runner: p.Runner,
 		Log:    p.Log,
+		Doc:    "Ping the DB",
 		MainSteps: []frame2.Step{
 			{
 				Validator: &execute.PostgresPing{

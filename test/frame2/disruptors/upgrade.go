@@ -169,14 +169,14 @@ func (u *UpgradeAndFinalize) Inspect(step *frame2.Step, phase *frame2.Phase) {
 	}
 	if action, ok := step.Modify.(execute.SkupperCliPathSetter); ok {
 		if !u.useNew {
-			log.Printf("UpgradeAndFinalize disruptor updating path for %T %+v", action, action)
+			log.Printf("UpgradeAndFinalize disruptor updating path for %T", action)
 			setCliPathEnv(action)
 		}
 	}
 	if action, ok := step.Modify.(execute.SkupperVersioner); ok {
 		if !u.useNew {
 			version := os.Getenv(frame2.ENV_OLD_VERSION)
-			log.Printf("UpgradeAndFinalize disruptor updating version to %q for %T %+v", version, action, action)
+			log.Printf("UpgradeAndFinalize disruptor updating version to %q for %T", version, action)
 			action.SetSkupperVersion(version)
 		}
 	}
