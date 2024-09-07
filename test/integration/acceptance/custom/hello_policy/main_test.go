@@ -60,18 +60,17 @@ func (kd KubeDeploy) deploy(ctx *base.ClusterContext) (err error) {
 // Deploys the front-end side of quay.io/skupper/hello-world-*
 func deployFrontend(ctx *base.ClusterContext) (err error) {
 	err = KubeDeploy{
-		image:  "quay.io/skupper/hello-world-frontend",
+		image:  "quay.io/dhashimo/hello-world-frontend",
 		labels: map[string]string{"app": "hello-world-frontend"},
 		name:   "hello-world-frontend",
 	}.deploy(ctx)
 	return
 }
 
-//
 // Deploys the backend-end side of quay.io/skupper/hello-world-*
 func deployBackend(ctx *base.ClusterContext) (err error) {
 	err = KubeDeploy{
-		image:  "quay.io/skupper/hello-world-backend",
+		image:  "quay.io/dhashimo/hello-world-backend",
 		labels: map[string]string{"app": "hello-world-backend"},
 		name:   "hello-world-backend",
 	}.deploy(ctx)
@@ -194,7 +193,7 @@ func getFuncName(function interface{}) string {
 //
 // To run a single test, refer to it as '//testName'.  For example,
 //
-//   go test -tags policy -timeout 60 -run "//testNamespace"
+//	go test -tags policy -timeout 60 -run "//testNamespace"
 //
 // This will ensure that not only the selected tests, but also its setup and
 // tear down steps.

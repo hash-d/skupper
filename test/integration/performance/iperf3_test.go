@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	IPERF_IMAGE = "quay.io/skupper/iperf3"
+	IPERF_IMAGE = "quay.io/dhashimo/iperf3"
 
 	ENV_IPERF_PARALLEL_CLIENTS = "IPERF_PARALLEL_CLIENTS"
 	ENV_IPERF_TRANSMIT_SIZES   = "IPERF_TRANSMIT_SIZES"

@@ -48,7 +48,7 @@ var tcpDeployment *appsv1.Deployment = &appsv1.Deployment{
 				Containers: []corev1.Container{
 					{
 						Name:            "tcp-go-echo",
-						Image:           "quay.io/skupper/tcp-go-echo",
+						Image:           "quay.io/dhashimo/tcp-go-echo",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Ports: []corev1.ContainerPort{
 							{
@@ -91,7 +91,7 @@ var tcpStatefulSet *appsv1.StatefulSet = &appsv1.StatefulSet{
 				Containers: []corev1.Container{
 					{
 						Name:            "tcp-go-echo",
-						Image:           "quay.io/skupper/tcp-go-echo",
+						Image:           "quay.io/dhashimo/tcp-go-echo",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Ports: []corev1.ContainerPort{
 							{
@@ -130,7 +130,7 @@ var httpDeployment *appsv1.Deployment = &appsv1.Deployment{
 				Containers: []corev1.Container{
 					{
 						Name:            "nginx",
-						Image:           "quay.io/skupper/nginx-unprivileged",
+						Image:           "quay.io/dhashimo/nginx-unprivileged",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Ports: []corev1.ContainerPort{
 							{

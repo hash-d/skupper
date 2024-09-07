@@ -61,7 +61,7 @@ var Deployment *appsv1.Deployment = &appsv1.Deployment{
 				Containers: []apiv1.Container{
 					{
 						Name:            "tcp-go-echo",
-						Image:           "quay.io/skupper/tcp-go-echo",
+						Image:           "quay.io/dhashimo/tcp-go-echo",
 						ImagePullPolicy: apiv1.PullIfNotPresent,
 						Ports: []apiv1.ContainerPort{
 							{

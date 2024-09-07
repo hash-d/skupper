@@ -108,7 +108,7 @@ func TestRecordDecoding(t *testing.T) {
 			fields: map[int]interface{}{
 				TypeOfRecord: uint32(Process),
 				Name:         "tcp-go-echo",
-				ImageName:    "quay.io/skupper/tcp-go-echo",
+				ImageName:    "quay.io/dhashimo/tcp-go-echo",
 				SourceHost:   "172.17.53.67",
 				Group:        "tcp-go-echo",
 				HostName:     "10.17.0.4",
@@ -298,7 +298,7 @@ func TestRecordEncoding(t *testing.T) {
 			fields: map[int]interface{}{
 				TypeOfRecord: uint32(Process),
 				Name:         "tcp-go-echo",
-				ImageName:    "quay.io/skupper/tcp-go-echo",
+				ImageName:    "quay.io/dhashimo/tcp-go-echo",
 				SourceHost:   "172.17.53.67",
 				Group:        "tcp-go-echo",
 				HostName:     "10.17.0.4",

@@ -458,13 +458,13 @@ func TestHelloWorldCLI(t *testing.T) {
 func deployResources(pub *base.ClusterContext, prv *base.ClusterContext) error {
 	var backend *appsv1.Deployment
 	frontend, _ := k8s.NewDeployment("hello-world-frontend", pub.Namespace, k8s.DeploymentOpts{
-		Image:         "quay.io/skupper/hello-world-frontend",
+		Image:         "quay.io/dhashimo/hello-world-frontend",
 		Labels:        map[string]string{"app": "hello-world-frontend"},
 		RestartPolicy: v1.RestartPolicyAlways,
 	})
 	if prv != nil {
 		backend, _ = k8s.NewDeployment("hello-world-backend", prv.Namespace, k8s.DeploymentOpts{
-			Image:         "quay.io/skupper/hello-world-backend",
+			Image:         "quay.io/dhashimo/hello-world-backend",
 			Labels:        map[string]string{"app": "hello-world-backend"},
 			RestartPolicy: v1.RestartPolicyAlways,
 		})

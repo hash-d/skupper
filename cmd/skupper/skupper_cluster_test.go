@@ -5,14 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	k8stesting "k8s.io/client-go/testing"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	k8stesting "k8s.io/client-go/testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -202,7 +203,7 @@ var tcpDeployment *appsv1.Deployment = &appsv1.Deployment{
 				Containers: []corev1.Container{
 					{
 						Name:            "tcp-go-echo",
-						Image:           "quay.io/skupper/tcp-go-echo",
+						Image:           "quay.io/dhashimo/tcp-go-echo",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 					},
 				},
@@ -236,7 +237,7 @@ var tcpStatefulSet *appsv1.StatefulSet = &appsv1.StatefulSet{
 				Containers: []corev1.Container{
 					{
 						Name:            "tcp-go-echo",
-						Image:           "quay.io/skupper/tcp-go-echo",
+						Image:           "quay.io/dhashimo/tcp-go-echo",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Ports: []corev1.ContainerPort{
 							{

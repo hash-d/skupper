@@ -691,13 +691,13 @@ func deployPodmanResources() error {
 		// podman network exists, but DNS is not enabled
 		return fmt.Errorf("podman network %s already exists, but DNS is not enabled", PodmanNetwork)
 	}
-	err = podmanCli.ImagePull(context.Background(), "quay.io/skupper/hello-world-backend")
+	err = podmanCli.ImagePull(context.Background(), "quay.io/dhashimo/hello-world-backend")
 	if err != nil {
 		return err
 	}
 	be := &container.Container{
 		Name:   "hello-world-backend",
-		Image:  "quay.io/skupper/hello-world-backend",
+		Image:  "quay.io/dhashimo/hello-world-backend",
 		Labels: map[string]string{"app": "hello-world-backend"},
 		Networks: map[string]container.ContainerNetworkInfo{
 			PodmanNetwork: {ID: PodmanNetwork},

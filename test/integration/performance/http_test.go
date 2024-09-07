@@ -313,9 +313,9 @@ func getHttpClientInfo(settings *httpSettings, serviceName string) *common.Clien
 
 func getHttpJobs(settings *httpSettings, serviceName string) []common.JobInfo {
 	var jobs []common.JobInfo
-	imageWrk := "quay.io/skupper/wrk"
-	imageWrk2 := "quay.io/skupper/wrk2"
-	imageHey := "quay.io/skupper/hey"
+	imageWrk := "quay.io/dhashimo/wrk"
+	imageWrk2 := "quay.io/dhashimo/wrk2"
+	imageHey := "quay.io/dhashimo/hey"
 	url := fmt.Sprintf("http://%s:8080", serviceName)
 	jobPrefix := "http"
 	if strings.Contains(serviceName, "tcp") {
@@ -426,7 +426,7 @@ func getHttpServerInfo(settings *httpSettings) *common.ServerInfo {
 
 func getHttpDeployment() *appsv1.Deployment {
 	dep, _ := k8s.NewDeployment("http-server", "", k8s.DeploymentOpts{
-		Image:  "quay.io/skupper/nginx-unprivileged:stable-alpine",
+		Image:  "quay.io/dhashimo/nginx-unprivileged:stable-alpine",
 		Labels: map[string]string{"app": "http-server"},
 	})
 	return dep
