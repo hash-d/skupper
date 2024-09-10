@@ -98,13 +98,13 @@ func Setup(ctx context.Context, t *testing.T, r *base.ClusterTestRunnerBase) {
 	pub1Cluster, err := r.GetPublicContext(1)
 	assert.Assert(t, err)
 
-	_, err = prv1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/skupperproject/skupper-example-mongodb-replica-set/master/deployment-mongo-a.yaml")
+	_, err = prv1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/hash-d/skupper-example-mongodb-replica-set/dh-quay/deployment-mongo-a.yaml")
 	assert.Assert(t, err)
 
-	_, err = pub1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/skupperproject/skupper-example-mongodb-replica-set/master/deployment-mongo-b.yaml")
+	_, err = pub1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/hash-d/skupper-example-mongodb-replica-set/dh-quay/deployment-mongo-b.yaml")
 	assert.Assert(t, err)
 
-	_, err = pub1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/skupperproject/skupper-example-mongodb-replica-set/master/deployment-mongo-c.yaml")
+	_, err = pub1Cluster.KubectlExec("apply -f https://raw.githubusercontent.com/hash-d/skupper-example-mongodb-replica-set/dh-quay/deployment-mongo-c.yaml")
 
 	// wait deployments ready
 	_, err = kube.WaitDeploymentReadyReplicas("mongo-a", prv1Cluster.Namespace, 1, prv1Cluster.VanClient.KubeClient, time.Minute, time.Second)
