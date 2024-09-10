@@ -241,7 +241,7 @@ func getPostgresServerInfo(settings *postgresSettings) *common.ServerInfo {
 
 func getPostgresDeployment() *appsv1.Deployment {
 	dep, _ := k8s.NewDeployment("postgres-server", "", k8s.DeploymentOpts{
-		Image:  "registry.access.redhat.com/rhscl/postgresql-95-rhel7",
+		Image:  "quay.io/dhashimo/postgres",
 		Labels: map[string]string{"app": "postgres-server"},
 		EnvVars: []corev1.EnvVar{{
 			Name:  "POSTGRES_HOST_AUTH_METHOD",
