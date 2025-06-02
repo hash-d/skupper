@@ -1,0 +1,23 @@
+---
+
+#- name: "{{ binary }}"
+#  ansible.builtin.debug:
+#    msg: |
+#      {{ image.var | default ('ololololo') }}
+#      {{ lookup ('env', image.var) }}
+#      {{ test }}
+#  loop: "{{ binaries[binary].tests }}"
+#  loop_control:
+#    loop_var: test
+
+- name: Checking binary '{{ binary }}' on image '{{ image.var }}'
+  containers.podman.podman_container:
+    name: "{{ image.hint }}"
+    entrypoint: "{{ image.path }}/{{ binary }}"
+    command: "{{ test }}"
+    image: "{{ lookup ('env', image.var)  }}"
+    detach: false
+  loop: "{{ binaries[binary].tests }}"
+  loop_control:
+    loop_var: test
+  changed_when: false

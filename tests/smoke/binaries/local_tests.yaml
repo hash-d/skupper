@@ -54,4 +54,5 @@
 
 - name: Record
   ansible.builtin.set_fact:
+    # TODO: add dictionary: result, path, stdout, perhaps -v
     local_binary_results: "{{ local_binary_results | default({}) | ansible.builtin.combine ( { command.key: command_result } ) }}"

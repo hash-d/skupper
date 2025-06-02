@@ -7,7 +7,7 @@
   vars_files:
   - vars.yaml
   tasks:
-  - name: Check {{ command }}
+  - name: Check command '{{ command }}'
     include_tasks: local_tests.yaml
     loop: "{{ binaries | dict2items }}"
     loop_control:
@@ -20,13 +20,34 @@
   vars_files:
   - vars.yaml
   tasks:
-  - name: Run skupper version -o yaml
-    ansible.builtin.command:
+
+#  - name: Run skupper version -o yaml
+#    ansible.builtin.command:
+#      # TODO: use binary determination above
+#      argv:
+#      - skupper
+#      - version
+#      - -o
+#      - yaml
+#    register: skupper_version
+#    ignore_errors: true
+#    changed_when: false
+#
+#  - name: Parse version output
+#    ansible.builtin.set_fact:
+#      components: "{{ skupper_version.stdout | from_yaml }}"
+
+  - name: Check configured components
+    include_tasks: image_tests.yaml
+    loop:  "{{ images.components.keys() }}"
+    loop_control:
+      loop_var: component
 
 - name: Report
   hosts: localhost
   gather_facts: no
   tasks:
   - name: Show local report
+    tags: local_binaries
     debug:
       var: local_binary_results

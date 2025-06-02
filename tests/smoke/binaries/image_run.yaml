@@ -1,0 +1,7 @@
+---
+
+- name: Testing image {{ image.hint }}
+  ansible.builtin.include_tasks: image_run_binary.yaml
+  loop: "{{ image.binary }}"
+  loop_control:
+    loop_var: binary

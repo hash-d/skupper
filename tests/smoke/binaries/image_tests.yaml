@@ -1,0 +1,7 @@
+---
+
+- name: Test component {{ component }}
+  ansible.builtin.include_tasks: image_run.yaml
+  loop: "{{ images.components[component] }}"
+  loop_control:
+    loop_var: image

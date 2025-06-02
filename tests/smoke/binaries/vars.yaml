@@ -8,7 +8,7 @@ binaries:
   skrouterd:
     tests:
     - -v
-    - -h
+    - --help
   controller:
     tests:
     - -version
@@ -29,3 +29,54 @@ binaries:
     tests:
     - -version
     - -h
+
+# On the output of skupper version -o yaml, each component has a list of images, which
+# do not receive a name, so we don't have a direct identification of, say kube-adaptor images
+#
+# In order to identify them, we check the 'hint' below against the image name.  The checks are
+# done in order, so make sure to leave 'broad' hints (such as 'cli' or 'router') at the end of
+# their lists.
+#
+# The 'binary' field refers to the items listed above, in the `binaries` key.
+#
+# TODO
+# If skupper version -o yaml returns an item that does not match any of the images below, it
+# should be an error (it probably means that the list below is outdated, and the test incomplete:
+# a new image has been added to the product and is not being considered).
+images:
+  components:
+    router:
+    - hint: kube-adaptor
+      var: SKUPPER_KUBE_ADAPTOR_IMAGE
+      path: /app
+      binary:
+      - kube-adaptor
+    - hint: router
+      var: SKUPPER_ROUTER_IMAGE
+      path: /usr/sbin
+      binary:
+      - skrouterd
+    controller:
+    - hint: controller
+      var: SKUPPER_CONTROLLER_IMAGE
+      path: /app
+      binary:
+      - controller
+    network-observer:
+    - hint: network-observer
+      var: SKUPPER_NETWORK_OBSERVER_IMAGE
+      path: /app
+      binary:
+      - network-observer
+    cli:
+    - hint: cli
+      var: SKUPPER_CLI_IMAGE
+      path: /app
+      binary:
+      - skupper
+    prometheus:
+    - hint: prometheus
+      binary: []
+    origin-oauth-proxy:
+    - hint: oauth-proxy
+      binary: []
