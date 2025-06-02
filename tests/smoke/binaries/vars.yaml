@@ -1,0 +1,31 @@
+---
+
+binaries:
+  skupper:
+    tests:
+    - version
+    - --help
+  skrouterd:
+    tests:
+    - -v
+    - -h
+  controller:
+    tests:
+    - -version
+    - -h
+  kube-adaptor:
+    tests:
+    - -version
+    - -h
+  network-console-collector:
+    tests:
+    - -version
+    - -h
+  network-observer:
+    tests:
+    - -version
+    - -h
+  system-controller:
+    tests:
+    - -version
+    - -h

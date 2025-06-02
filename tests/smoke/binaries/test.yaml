@@ -1,0 +1,32 @@
+---
+
+- name: Test local binaries
+  hosts: localhost
+  gather_facts: no
+  tags: local_binaries
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Check {{ command }}
+    include_tasks: local_tests.yaml
+    loop: "{{ binaries | dict2items }}"
+    loop_control:
+      loop_var: command
+
+- name: Test images
+  hosts: localhost
+  gather_facts: no
+  tags: images
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Run skupper version -o yaml
+    ansible.builtin.command:
+
+- name: Report
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Show local report
+    debug:
+      var: local_binary_results
