@@ -1,5 +1,7 @@
 ---
 
+# For a given component, this loops over its images
+
 - name: Test component {{ component }}
   ansible.builtin.include_tasks: image_run.yaml
   loop: "{{ images.components[component] }}"

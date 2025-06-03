@@ -8,13 +8,6 @@
   changed_when: false
   register: which
 
-- name: Check whether we're running on git
-  ansible.builtin.command:
-    cmd: git rev-parse --show-toplevel
-  register: git_root
-  ignore_errors: true
-  changed_when: false
-
 - name: Check whether command is locally built
   ansible.builtin.stat:
     path: "{{ git_root.stdout }}/{{ command.key }}"
@@ -55,4 +48,12 @@
 - name: Record
   ansible.builtin.set_fact:
     # TODO: add dictionary: result, path, stdout, perhaps -v
-    local_binary_results: "{{ local_binary_results | default({}) | ansible.builtin.combine ( { command.key: command_result } ) }}"
+    local_binary_results: "{{
+      local_binary_results | default({}) | ansible.builtin.combine (
+        {
+          command.key: {
+            'result': command_result,
+          }
+        }
+      )
+    }}"

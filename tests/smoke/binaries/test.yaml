@@ -7,6 +7,12 @@
   vars_files:
   - vars.yaml
   tasks:
+  - name: Check whether we're running on git
+    ansible.builtin.command:
+      cmd: git rev-parse --show-toplevel
+    register: git_root
+    ignore_errors: true
+    changed_when: false
   - name: Check command '{{ command }}'
     include_tasks: local_tests.yaml
     loop: "{{ binaries | dict2items }}"

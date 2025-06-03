@@ -1,0 +1,7 @@
+---
+
+# This is required for using `ansible-playbook -i localhost,`, and having the
+# git repo verification working.  Without this, localhost is treated as a regular
+# host, and accessed via ssh.  With that, the PWD changes and the git repo
+# verification fails.
+ansible_connection: local

@@ -1,5 +1,8 @@
 ---
 
+# This for a component/image, this loops over the binaries to be
+# tested on the image, calling the leaf tasklist
+
 - name: Testing image {{ image.hint }}
   ansible.builtin.include_tasks: image_run_binary.yaml
   loop: "{{ image.binary }}"
