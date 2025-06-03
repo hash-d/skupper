@@ -14,6 +14,7 @@
   register: local_cmd
   when: git_root is success
 
+# TODO: split this in two; save which to a fact (run it once per binary, not per test)
 - name: Determine which binary to use {{ command.key }}
   vars:
     cmd: "{{
@@ -43,7 +44,7 @@
       }}"
 
 - debug:
-    var: command_result
+    var: local_binary_result
 
 - name: Record
   ansible.builtin.set_fact:
