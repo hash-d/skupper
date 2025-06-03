@@ -1,7 +1,7 @@
 ---
 
 - name: Test local binaries
-  hosts: localhost
+  hosts: all
   gather_facts: no
   tags: local_binaries
   vars_files:
@@ -14,7 +14,7 @@
       loop_var: command
 
 - name: Test images
-  hosts: localhost
+  hosts: all
   gather_facts: no
   tags: images
   vars_files:
@@ -44,7 +44,7 @@
       loop_var: component
 
 - name: Report
-  hosts: localhost
+  hosts: all
   gather_facts: no
   tasks:
   - name: Show local report

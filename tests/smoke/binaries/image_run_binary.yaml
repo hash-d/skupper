@@ -1,14 +1,8 @@
 ---
 
-#- name: "{{ binary }}"
-#  ansible.builtin.debug:
-#    msg: |
-#      {{ image.var | default ('ololololo') }}
-#      {{ lookup ('env', image.var) }}
-#      {{ test }}
-#  loop: "{{ binaries[binary].tests }}"
-#  loop_control:
-#    loop_var: test
+# This runs the actual containers; one execution per test
+#
+# That's the 'leaf' task list of the image tests
 
 - name: Checking binary '{{ binary }}' on image '{{ image.var }}'
   containers.podman.podman_container:
