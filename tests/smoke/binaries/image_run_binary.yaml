@@ -6,11 +6,12 @@
 
 - name: Checking binary '{{ binary }}' on image '{{ image.var }}'
   containers.podman.podman_container:
-    name: "{{ image.hint }}"
+    name: "smoke-{{ image.hint }}-{{ 9999 | ansible.builtin.random }}"
     entrypoint: "{{ image.path }}/{{ binary }}"
     command: "{{ test }}"
     image: "{{ lookup ('env', image.var)  }}"
     detach: false
+    rm: true
   loop: "{{ binaries[binary].tests }}"
   loop_control:
     loop_var: test
