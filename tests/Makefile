@@ -8,6 +8,7 @@ PYTHON ?= python3
 # by these tests with -l e2e.id=$TEST_PREFIX.  If not set, we create a random one
 RANDOM != echo $$RANDOM
 TEST_PREFIX ?= $(RANDOM)
+export TEST_PREFIX
 
 # E2E Test directories
 E2E_TEST_DIRS := $(sort $(wildcard $(ROOT_PATH)/e2e/scenarios/*))
