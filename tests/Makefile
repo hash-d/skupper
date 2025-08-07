@@ -2,8 +2,12 @@ ROOT_PATH := $(shell pwd)
 EXTRA_VARS := --extra-vars "@$(ROOT_PATH)/vars.yml"
 COLLECTION_PATH := $(ROOT_PATH)/e2e/collections/ansible_collections/e2e/tests
 TESTS_CI := attached-connector,ha,hello-world,expose-pods-by-name
-TEST_PREFIX ?= $$RANDOM
 PYTHON ?= python3
+
+# The caller may set a TEST_PREFIX, so they can deal with all namespaces created
+# by these tests with -l e2e.id=$TEST_PREFIX.  If not set, we create a random one
+RANDOM != echo $$RANDOM
+TEST_PREFIX ?= $(RANDOM)
 
 # E2E Test directories
 E2E_TEST_DIRS := $(sort $(wildcard $(ROOT_PATH)/e2e/scenarios/*))
