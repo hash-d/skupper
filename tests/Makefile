@@ -3,6 +3,7 @@ EXTRA_VARS := --extra-vars "@$(ROOT_PATH)/vars.yml"
 COLLECTION_PATH := $(ROOT_PATH)/e2e/collections/ansible_collections/e2e/tests
 TESTS_CI := attached-connector,ha,hello-world,expose-pods-by-name
 TEST_PREFIX ?= $$RANDOM
+PYTHON ?= python3
 
 # E2E Test directories
 E2E_TEST_DIRS := $(sort $(wildcard $(ROOT_PATH)/e2e/scenarios/*))
@@ -14,7 +15,7 @@ create-venv:
 		echo "Removing old environment if it exists..."; \
 		rm -rf /tmp/e2e-venv; \
 		echo "Creating virtual environment..."; \
-		cd /tmp && python3 -m venv e2e-venv; \
+		cd /tmp && $(PYTHON) -m venv e2e-venv; \
 		if [ -d "/tmp/e2e-venv" ]; then \
 			echo "Virtual environment created successfully at /tmp/e2e-venv"; \
 			. /tmp/e2e-venv/bin/activate && \
