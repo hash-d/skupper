@@ -93,6 +93,7 @@
         - name: Initialize the default namespace using podman
           skupper.v2.system:
             action: setup
+            image: "{{ lookup('env', 'SKUPPER_SYSTEM_CONTROLLER_IMAGE') | default (omit, true) }}"
       when:
         - "'podman' in inventory_hostname"
 
