@@ -5,7 +5,7 @@ TESTS_CI := attached-connector,ha,hello-world,expose-pods-by-name
 PYTHON ?= python3
 
 # The caller may set a TEST_PREFIX, so they can deal with all namespaces created
-# by these tests with -l e2e.id=$TEST_PREFIX.  If not set, we create a random one
+# by these tests with -l e2e.prefix=$TEST_PREFIX.  If not set, we create a random one
 RANDOM != echo $$RANDOM
 TEST_PREFIX ?= $(RANDOM)
 export TEST_PREFIX
