@@ -60,7 +60,8 @@ test: create-venv
 		exit 1; \
 	fi
 
-	@echo "Running the test for directory: $(TEST) with prefix: $(TEST_PREFIX)"; \
+	@echo "Running the test for directory: $(TEST) with prefix: $(TEST_PREFIX)";
+
 	. /tmp/e2e-venv/bin/activate && \
 	mkdir -p /tmp/e2e/$(TEST) && \
 	ANSIBLE_LOG_PATH=/tmp/e2e/$(TEST)/ansible_$$(date +%Y%m%d_%H%M%S).log \
