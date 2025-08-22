@@ -8,8 +8,7 @@ collections:
 
   - name: kubernetes.core
 
-  - name: https://github.com/skupperproject/skupper-ansible.git
-    type: git
-    version: main
+  - name: skupper.v2
+    version: 2.1.1
 
   - name: containers.podman
