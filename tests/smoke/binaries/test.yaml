@@ -43,6 +43,13 @@
 #    ansible.builtin.set_fact:
 #      components: "{{ skupper_version.stdout | from_yaml }}"
 
+  - name: Gather hosts info
+    ansible.builtin.setup:
+      gather_subset: architecture,distribution,distribution_version
+  - name: Show system info
+    ansible.builtin.debug:
+      msg: |
+        {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }} / {{ ansible_facts.architecture }}
   - name: Check configured components
     include_tasks: image_tests.yaml
     loop:  "{{ images.components.keys() }}"
