@@ -56,6 +56,12 @@ images:
       path: /usr/sbin
       binary:
       - skrouterd
+    system-controller:
+    - hint: system-controller
+      var: SKUPPER_SYSTEM_CONTROLLER_IMAGE
+      path: /app
+      binary:
+      - system-controller
     controller:
     - hint: controller
       var: SKUPPER_CONTROLLER_IMAGE
