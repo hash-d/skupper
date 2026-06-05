@@ -16,6 +16,14 @@
         name: curl
       spec:
         restartPolicy: Never
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
         containers:
           - name: curl
             image: "{{ run_curl_image }}"
